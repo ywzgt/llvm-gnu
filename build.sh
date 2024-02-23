@@ -3,25 +3,31 @@
 set -e
 source envars.sh
 
+VERSION=17.0.6
+
 SRC=(
-	https://github.com/llvm/llvm-project/releases/download/llvmorg-17.0.6/llvm-17.0.6.src.tar.xz
-	https://anduin.linuxfromscratch.org/BLFS/llvm/llvm-cmake-17.src.tar.xz
-	https://anduin.linuxfromscratch.org/BLFS/llvm/llvm-third-party-17.src.tar.xz
+	https://github.com/llvm/llvm-project/releases/download/llvmorg-${VERSION}/llvm-${VERSION}.src.tar.xz
+	https://github.com/llvm/llvm-project/releases/download/llvmorg-${VERSION}/cmake-${VERSION}.src.tar.xz
+	https://github.com/llvm/llvm-project/releases/download/llvmorg-${VERSION}/third-party-${VERSION}.src.tar.xz
+
 	https://www.linuxfromscratch.org/patches/blfs/svn/clang-17-enable_default_ssp-1.patch
-	https://github.com/llvm/llvm-project/releases/download/llvmorg-17.0.6/clang-17.0.6.src.tar.xz
-	https://github.com/llvm/llvm-project/releases/download/llvmorg-17.0.6/compiler-rt-17.0.6.src.tar.xz
-	https://github.com/llvm/llvm-project/releases/download/llvmorg-17.0.6/lld-17.0.6.src.tar.xz
-	https://github.com/llvm/llvm-project/releases/download/llvmorg-17.0.6/libunwind-17.0.6.src.tar.xz
+	https://github.com/llvm/llvm-project/releases/download/llvmorg-${VERSION}/clang-${VERSION}.src.tar.xz
+	https://github.com/llvm/llvm-project/releases/download/llvmorg-${VERSION}/compiler-rt-${VERSION}.src.tar.xz
+	https://github.com/llvm/llvm-project/releases/download/llvmorg-${VERSION}/lld-${VERSION}.src.tar.xz
+	https://github.com/llvm/llvm-project/releases/download/llvmorg-${VERSION}/libunwind-${VERSION}.src.tar.xz
 )
+
+# 	https://anduin.linuxfromscratch.org/BLFS/llvm/llvm-cmake-17.src.tar.xz
+# 	https://anduin.linuxfromscratch.org/BLFS/llvm/llvm-third-party-17.src.tar.xz
 
 # /build/llvm-17.0.6.src/tools/lld/MachO/Target.h:23:10: fatal error: mach-o/compact_unwind_encoding.h: No such file or directory
 #    23 | #include "mach-o/compact_unwind_encoding.h"
 
 if [[ $1 = libcxx ]]; then
 	SRC+=(
-		https://github.com/llvm/llvm-project/releases/download/llvmorg-17.0.6/libcxx-17.0.6.src.tar.xz
-		https://github.com/llvm/llvm-project/releases/download/llvmorg-17.0.6/libcxxabi-17.0.6.src.tar.xz
-		https://github.com/llvm/llvm-project/releases/download/llvmorg-17.0.6/runtimes-17.0.6.src.tar.xz
+		https://github.com/llvm/llvm-project/releases/download/llvmorg-${VERSION}/libcxx-${VERSION}.src.tar.xz
+		https://github.com/llvm/llvm-project/releases/download/llvmorg-${VERSION}/libcxxabi-${VERSION}.src.tar.xz
+		https://github.com/llvm/llvm-project/releases/download/llvmorg-${VERSION}/runtimes-${VERSION}.src.tar.xz
 	)
 fi
 
@@ -36,27 +42,29 @@ for i in ${SRC[@]}; do
 	fi
 done
 
-cd llvm-17.0.6.src
-tar -xf ../llvm-cmake-17.src.tar.xz
-tar -xf ../llvm-third-party-17.src.tar.xz
+cd llvm-${VERSION}.src
+# tar -xf ../llvm-cmake-17.src.tar.xz
+# tar -xf ../llvm-third-party-17.src.tar.xz
 sed '/LLVM_COMMON_CMAKE_UTILS/s@../cmake@llvm-cmake-17.src@'          \
     -i CMakeLists.txt
 sed '/LLVM_THIRD_PARTY_DIR/s@../third-party@llvm-third-party-17.src@' \
     -i cmake/modules/HandleLLVMOptions.cmake
 
 while pidof -q tar; do sleep 0.1; done
-mv ../clang-17.0.6.src tools/clang
-mv ../lld-17.0.6.src tools/lld
-mv ../libunwind-17.0.6.src projects/libunwind
-mv ../compiler-rt-17.0.6.src projects/compiler-rt
+mv ../cmake-${VERSION}.src llvm-cmake-17.src
+mv ../third-party-${VERSION}.src llvm-third-party-17.src
+mv ../clang-${VERSION}.src tools/clang
+mv ../lld-${VERSION}.src tools/lld
+mv ../libunwind-${VERSION}.src projects/libunwind
+mv ../compiler-rt-${VERSION}.src projects/compiler-rt
 sed '/^set(LLVM_COMMON_CMAKE_UTILS/d' -i projects/{compiler-rt,libunwind}/CMakeLists.txt
 ln -sr projects/libunwind ..
 
 if [[ $1 = libcxx ]]; then
-	mv ../libcxx-17.0.6.src projects/libcxx
-	mv ../libcxxabi-17.0.6.src projects/libcxxabi
-	cp -ri ../runtimes-17.0.6.src/cmake/* llvm-cmake-17.src  # libc++abi testing configuration
-	mv ../runtimes-17.0.6.src llvm-runtimes-17.src
+	mv ../libcxx-${VERSION}.src projects/libcxx
+	mv ../libcxxabi-${VERSION}.src projects/libcxxabi
+	cp -ri ../runtimes-${VERSION}.src/cmake/* llvm-cmake-17.src  # libc++abi testing configuration
+	mv ../runtimes-${VERSION}.src llvm-runtimes-17.src
 	sed -e '/^set(LLVM_COMMON_CMAKE_UTILS/s@../cmake@../llvm-cmake-17.src@' \
 		-e '/LLVM_THIRD_PARTY_DIR/s@../third-party@../llvm-third-party-17.src@' \
 		-e '/..\/llvm\(\/\|)\)/s/\/llvm//' -e '/${CMAKE_CURRENT_SOURCE_DIR}\/..\/${proj}/s/${proj}/projects\/&/' \
@@ -71,7 +79,7 @@ else
 	for M in {HandleFlags,WarningFlags}.cmake; do
 		if [ ! -e projects/libunwind/cmake/Modules/$M ]; then
 			wget -nv -cP projects/libunwind/cmake/Modules \
-				https://github.com/llvm/llvm-project/raw/llvmorg-17.0.6/runtimes/cmake/Modules/$M
+				https://github.com/llvm/llvm-project/raw/llvmorg-${VERSION}/runtimes/cmake/Modules/$M
 		fi
 	done
 fi
@@ -108,15 +116,14 @@ cmake -DCMAKE_INSTALL_PREFIX=/usr           \
       -DLLVM_BINUTILS_INCDIR=/usr/include   \
       -DLLVM_INCLUDE_BENCHMARKS=OFF         \
       -DCLANG_DEFAULT_PIE_ON_LINUX=ON       \
-      -DCMAKE_SKIP_RPATH=ON \
+      -DLLVM_BUILD_TESTS=OFF \
+      -DLLVM_INCLUDE_TESTS=OFF \
       -Wno-dev -G Ninja ..
 
 ninja
 ninja install
 DESTDIR=$PWD/../../DEST ninja install
 
-VERSION=${PWD%.src/*}
-VERSION=${VERSION#*llvm-}
 echo "$VERSION" > $PWD/../../VERSION
 clang -v
 ld.lld --version
