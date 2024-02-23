@@ -47,27 +47,33 @@ sed '/LLVM_THIRD_PARTY_DIR/s@../third-party@llvm-third-party-17.src@' \
 while pidof -q tar; do sleep 0.1; done
 mv ../clang-17.0.6.src tools/clang
 mv ../lld-17.0.6.src tools/lld
-mv ../libunwind{-17.0.6.src,}
+mv ../libunwind-17.0.6.src projects/libunwind
 mv ../compiler-rt-17.0.6.src projects/compiler-rt
-sed '/^set(LLVM_COMMON_CMAKE_UTILS/d' -i projects/compiler-rt/CMakeLists.txt
+sed '/^set(LLVM_COMMON_CMAKE_UTILS/d' -i projects/{compiler-rt,libunwind}/CMakeLists.txt
+ln -sr projects/libunwind ..
 
 if [[ $1 = libcxx ]]; then
 	mv ../libcxx-17.0.6.src projects/libcxx
 	mv ../libcxxabi-17.0.6.src projects/libcxxabi
 	cp -ri ../runtimes-17.0.6.src/cmake/* llvm-cmake-17.src  # libc++abi testing configuration
 	mv ../runtimes-17.0.6.src llvm-runtimes-17.src
-	#ln -s projects/libcxx* .
-	#sed '/^set(LLVM_COMMON_CMAKE_UTILS/d' -i llvm-runtimes-17.src/CMakeLists.txt
 	sed -e '/^set(LLVM_COMMON_CMAKE_UTILS/s@../cmake@../llvm-cmake-17.src@' \
 		-e '/LLVM_THIRD_PARTY_DIR/s@../third-party@../llvm-third-party-17.src@' \
 		-e '/..\/llvm\(\/\|)\)/s/\/llvm//' -e '/${CMAKE_CURRENT_SOURCE_DIR}\/..\/${proj}/s/${proj}/projects\/&/' \
 		-i llvm-runtimes-17.src/CMakeLists.txt
 	sed '/CMAKE_CURRENT_SOURCE_DIR/s@../runtimes@llvm-runtimes-17.src@' \
-		-i {projects/libcxx{,abi},runtimes}/CMakeLists.txt
+		-i runtimes/CMakeLists.txt
 	sed '/^set(LLVM_COMMON_CMAKE_UTILS/d' -i projects/libcxx{,abi}/CMakeLists.txt
 	sed 's@../runtimes@llvm-runtimes-17.src@' -i \
 		projects/compiler-rt/cmake/Modules/AddCompilerRT.cmake \
 		projects/compiler-rt/lib/sanitizer_common/symbolizer/scripts/build_symbolizer.sh
+else
+	for M in {HandleFlags,WarningFlags}.cmake; do
+		if [ ! -e projects/libunwind/cmake/Modules/$M ]; then
+			wget -nv -cP projects/libunwind/cmake/Modules \
+				https://github.com/llvm/llvm-project/raw/llvmorg-17.0.6/runtimes/cmake/Modules/$M
+		fi
+	done
 fi
 
 grep -rl '#!.*python' | xargs sed -i '1s/python$/python3/'
@@ -80,7 +86,8 @@ cd build
 
 src_config() {
 	if command -v clang{,++} > /dev/null; then
-		if command -v ld.lld > /dev/null; then
+		if command -v ld.lld > /dev/null
+		then
 			CC=clang CXX=clang++ LD=ld.lld "$@"
 		else
 			CC=clang CXX=clang++ "$@"
@@ -111,5 +118,5 @@ DESTDIR=$PWD/../../DEST ninja install
 VERSION=${PWD%.src/*}
 VERSION=${VERSION#*llvm-}
 echo "$VERSION" > $PWD/../../VERSION
-clang --version
+clang -v
 ld.lld --version
