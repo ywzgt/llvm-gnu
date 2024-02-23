@@ -56,7 +56,9 @@ if [[ $1 = libcxx ]]; then
 	mv ../libcxxabi-17.0.6.src projects/libcxxabi
 	cp -ri ../runtimes-17.0.6.src/cmake/* llvm-cmake-17.src  # libc++abi testing configuration
 	mv ../runtimes-17.0.6.src llvm-runtimes-17.src
-	sed '/^set(LLVM_COMMON_CMAKE_UTILS/d' -i llvm-runtimes-17.src/CMakeLists.txt
+	#sed '/^set(LLVM_COMMON_CMAKE_UTILS/d' -i llvm-runtimes-17.src/CMakeLists.txt
+	sed '/^set(LLVM_COMMON_CMAKE_UTILS/s@../cmake@../llvm-cmake-17.src@' \
+		-i llvm-runtimes-17.src/CMakeLists.txt
 	sed '/CMAKE_CURRENT_SOURCE_DIR/s@../runtimes@llvm-runtimes-17.src@' \
 		-i {projects/lib{cxx{,abi},unwind},runtimes}/CMakeLists.txt
 	sed '/^set(LLVM_COMMON_CMAKE_UTILS/d' -i projects/libcxx{,abi}/CMakeLists.txt
