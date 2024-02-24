@@ -1,4 +1,4 @@
-name: llvm
+name: llvm with libcxx 2
 
 on:
   workflow_dispatch:
@@ -38,13 +38,13 @@ jobs:
     - name: Run script to build llvm
       run: sudo chroot rootfs /usr/bin/env -i HOME=/root TERM=$TERM PATH=/usr/bin:/usr/sbin /bin/bash --login -c "cd /build; bash build.sh"
     - name: Run script to build llvm stage2
-      run: sudo chroot rootfs /usr/bin/env -i HOME=/root TERM=$TERM PATH=/usr/bin:/usr/sbin /bin/bash --login -c "cd /build; bash build.sh"
+      run: sudo chroot rootfs /usr/bin/env -i HOME=/root TERM=$TERM PATH=/usr/bin:/usr/sbin /bin/bash --login -c "cd /build; bash build.sh libcxx"
     - name: Run script to strip
       run: sudo chroot rootfs /usr/bin/env -i HOME=/root TERM=$TERM PATH=/usr/bin:/usr/sbin /bin/bash --login -c "cd /build; bash -e strip.sh DEST"
     - name: Package
-      run: V=$(<rootfs/build/VERSION); (cd rootfs/build/DEST; sudo tar cf - .|xz -T0) > llvm-$V.tar.xz; echo "TAG_VERSION=$V-$(date +s)" >> $GITHUB_ENV
+      run: V=$(<rootfs/build/VERSION); (cd rootfs/build/DEST; sudo tar cf - .|xz -T0) > llvm-libcxx2-$V.tar.xz; echo "TAG_VERSION=$V-$(date +s)" >> $GITHUB_ENV
     - name: Upload to Releases
-      uses: softprops/action-gh-release@master
+      uses: softprops/action-gh-release@v1
       with:
         tag_name: ${{ env.TAG_VERSION }}
         files: llvm-*.tar.xz

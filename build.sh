@@ -19,7 +19,6 @@ SRC=(
 
 # 	https://anduin.linuxfromscratch.org/BLFS/llvm/llvm-cmake-17.src.tar.xz
 # 	https://anduin.linuxfromscratch.org/BLFS/llvm/llvm-third-party-17.src.tar.xz
-
 # /build/llvm-17.0.6.src/tools/lld/MachO/Target.h:23:10: fatal error: mach-o/compact_unwind_encoding.h: No such file or directory
 #    23 | #include "mach-o/compact_unwind_encoding.h"
 
@@ -31,6 +30,7 @@ if [[ $1 = libcxx ]]; then
 	)
 fi
 
+rm -rf libunwind llvm-${VERSION}.src
 for i in ${SRC[@]}; do
 	wget -nv -c $i
 	if ! [[ $i =~ BLFS ]]; then
@@ -96,7 +96,8 @@ src_config() {
 	if command -v clang{,++} > /dev/null; then
 		if command -v ld.lld > /dev/null
 		then
-			CC=clang CXX=clang++ LD=ld.lld "$@"
+			CC=clang CXX=clang++ LD=ld.lld \
+			LDFLAGS="$LDFLAGS -fuse-ld=lld" "$@"
 		else
 			CC=clang CXX=clang++ "$@"
 		fi
@@ -116,15 +117,14 @@ cmake -DCMAKE_INSTALL_PREFIX=/usr           \
       -DLLVM_BINUTILS_INCDIR=/usr/include   \
       -DLLVM_INCLUDE_BENCHMARKS=OFF         \
       -DCLANG_DEFAULT_PIE_ON_LINUX=ON       \
-      -DCMAKE_SKIP_RPATH=ON \
       -DLLVM_BUILD_TESTS=OFF \
       -DLLVM_INCLUDE_TESTS=OFF \
       -Wno-dev -G Ninja ..
 
-ninja || LD_LIBRARY_PATH=$PWD/lib ninja
+ninja
 ninja install
-DESTDIR=$PWD/../../DEST ninja install
-
+rm -rf ../../DEST
+DESTDIR=$PWD/../../DEST ninja install &> /dev/null
 echo "$VERSION" > $PWD/../../VERSION
 clang -v
 ld.lld --version
