@@ -116,11 +116,12 @@ cmake -DCMAKE_INSTALL_PREFIX=/usr           \
       -DLLVM_BINUTILS_INCDIR=/usr/include   \
       -DLLVM_INCLUDE_BENCHMARKS=OFF         \
       -DCLANG_DEFAULT_PIE_ON_LINUX=ON       \
+      -DCMAKE_SKIP_RPATH=ON \
       -DLLVM_BUILD_TESTS=OFF \
       -DLLVM_INCLUDE_TESTS=OFF \
       -Wno-dev -G Ninja ..
 
-ninja
+ninja || LD_LIBRARY_PATH=$PWD/lib ninja
 ninja install
 DESTDIR=$PWD/../../DEST ninja install
 
