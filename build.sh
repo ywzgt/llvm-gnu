@@ -94,13 +94,7 @@ cd build
 
 src_config() {
 	if command -v clang{,++} > /dev/null; then
-		if command -v ld.lld > /dev/null
-		then
-			CC=clang CXX=clang++ LD=ld.lld \
-			LDFLAGS="$LDFLAGS -fuse-ld=lld" "$@"
-		else
-			CC=clang CXX=clang++ "$@"
-		fi
+		CC=clang CXX=clang++ "$@"
 	else
 		CC=gcc CXX=g++ "$@"
 	fi
@@ -117,14 +111,40 @@ cmake -DCMAKE_INSTALL_PREFIX=/usr           \
       -DLLVM_BINUTILS_INCDIR=/usr/include   \
       -DLLVM_INCLUDE_BENCHMARKS=OFF         \
       -DCLANG_DEFAULT_PIE_ON_LINUX=ON       \
+      -DCMAKE_SKIP_RPATH=ON \
       -DLLVM_BUILD_TESTS=OFF \
       -DLLVM_INCLUDE_TESTS=OFF \
+      -DLLVM_HOST_TRIPLE=$(gcc -dumpmachine) \
+      -DCLANG_CONFIG_FILE_SYSTEM_DIR=/usr/lib/clang \
+      -DLIB{CXX{,ABI},UNWIND}_INSTALL_LIBRARY_DIR=lib \
       -Wno-dev -G Ninja ..
 
+LD_LIBRARY_PATH=$PWD/lib \
 ninja
 ninja install
 rm -rf ../../DEST
 DESTDIR=$PWD/../../DEST ninja install &> /dev/null
+
+# https://packages.gentoo.org/packages/sys-devel/clang-common
+cat > {,../../DEST}"/usr/lib/clang.cfg" <<-EOF
+	# It is used to control the default runtimes using by clang.
+
+	--rtlib=compiler-rt
+	--unwindlib=libunwind
+	--stdlib=libc++
+	-fuse-ld=lld
+EOF
+
+if [[ $1 != libcxx ]]; then
+	sed -i '/--stdlib=libc++$/d' {,../../DEST}"/usr/lib/clang.cfg"
+fi
+
+if ! command -v ld.lld > /dev/null
+	sed '/-fuse-ld=lld$/d' {,../../DEST}"/usr/lib/clang.cfg"
+fi
+ln -s clang.cfg "/usr/lib/clang++.cfg"
+ln -s clang.cfg "../../DEST/usr/lib/clang++.cfg"
+
 echo "$VERSION" > $PWD/../../VERSION
 clang -v
 ld.lld --version
