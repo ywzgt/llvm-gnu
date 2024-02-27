@@ -55,7 +55,7 @@ mv ../clang-${VERSION}.src tools/clang
 mv ../lld-${VERSION}.src tools/lld
 mv ../libunwind-${VERSION}.src projects/libunwind
 mv ../compiler-rt-${VERSION}.src projects/compiler-rt
-sed '/^set(LLVM_COMMON_CMAKE_UTILS/d' -i projects/{compiler-rt,libunwind}/CMakeLists.txt
+sed '/^set(LLVM_COMMON_CMAKE_UTILS/s@../cmake@../../llvm-cmake-17.src@' -i projects/{compiler-rt,libunwind}/CMakeLists.txt
 ln -sr projects/libunwind ..
 
 if [[ $1 = libcxx ]]; then
