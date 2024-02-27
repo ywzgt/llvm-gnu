@@ -16,9 +16,6 @@ SRC=(
 	https://github.com/llvm/llvm-project/releases/download/llvmorg-${VERSION}/lld-${VERSION}.src.tar.xz
 	https://github.com/llvm/llvm-project/releases/download/llvmorg-${VERSION}/libunwind-${VERSION}.src.tar.xz
 )
-
-# 	https://anduin.linuxfromscratch.org/BLFS/llvm/llvm-cmake-17.src.tar.xz
-# 	https://anduin.linuxfromscratch.org/BLFS/llvm/llvm-third-party-17.src.tar.xz
 # /build/llvm-17.0.6.src/tools/lld/MachO/Target.h:23:10: fatal error: mach-o/compact_unwind_encoding.h: No such file or directory
 #    23 | #include "mach-o/compact_unwind_encoding.h"
 
@@ -43,8 +40,6 @@ for i in ${SRC[@]}; do
 done
 
 cd llvm-${VERSION}.src
-# tar -xf ../llvm-cmake-17.src.tar.xz
-# tar -xf ../llvm-third-party-17.src.tar.xz
 sed '/LLVM_COMMON_CMAKE_UTILS/s@../cmake@llvm-cmake-17.src@'          \
     -i CMakeLists.txt
 sed '/LLVM_THIRD_PARTY_DIR/s@../third-party@llvm-third-party-17.src@' \
@@ -94,7 +89,8 @@ cd build
 
 src_config() {
 	if command -v clang{,++} > /dev/null; then
-		CC=clang CXX=clang++ "$@"
+		CC=clang CXX=clang++ "$@" \
+		-DCMAKE_SKIP_RPATH=ON
 	else
 		CC=gcc CXX=g++ "$@"
 	fi
@@ -111,7 +107,6 @@ cmake -DCMAKE_INSTALL_PREFIX=/usr           \
       -DLLVM_BINUTILS_INCDIR=/usr/include   \
       -DLLVM_INCLUDE_BENCHMARKS=OFF         \
       -DCLANG_DEFAULT_PIE_ON_LINUX=ON       \
-      -DCMAKE_SKIP_RPATH=ON \
       -DLLVM_BUILD_TESTS=OFF \
       -DLLVM_INCLUDE_TESTS=OFF \
       -DLLVM_HOST_TRIPLE=$(gcc -dumpmachine) \
@@ -119,14 +114,13 @@ cmake -DCMAKE_INSTALL_PREFIX=/usr           \
       -DLIB{CXX{,ABI},UNWIND}_INSTALL_LIBRARY_DIR=lib \
       -Wno-dev -G Ninja ..
 
-LD_LIBRARY_PATH=$PWD/lib \
 ninja
 ninja install
 rm -rf ../../DEST
 DESTDIR=$PWD/../../DEST ninja install &> /dev/null
 
 # https://packages.gentoo.org/packages/sys-devel/clang-common
-cat > {,../../DEST}"/usr/lib/clang.cfg" <<-EOF
+cat > ../../DEST/usr/lib/clang/clang.cfg <<-EOF
 	# It is used to control the default runtimes using by clang.
 
 	--rtlib=compiler-rt
@@ -136,15 +130,11 @@ cat > {,../../DEST}"/usr/lib/clang.cfg" <<-EOF
 EOF
 
 if [[ $1 != libcxx ]]; then
-	sed -i '/--stdlib=libc++$/d' {,../../DEST}"/usr/lib/clang.cfg"
+	sed -i '/--stdlib=libc++$/d' ../../DEST/usr/lib/clang/clang.cfg
 fi
 
-if ! command -v ld.lld > /dev/null
-	sed '/-fuse-ld=lld$/d' {,../../DEST}"/usr/lib/clang.cfg"
-fi
-ln -s clang.cfg "/usr/lib/clang++.cfg"
-ln -s clang.cfg "../../DEST/usr/lib/clang++.cfg"
-
+ln -s clang.cfg "../../DEST/usr/lib/clang/clang++.cfg"
+cp ../../DEST/usr/lib/clang/*.cfg "/usr/lib/clang/"
 echo "$VERSION" > $PWD/../../VERSION
 clang -v
 ld.lld --version
