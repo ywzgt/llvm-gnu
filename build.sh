@@ -55,7 +55,7 @@ mv ../clang-${VERSION}.src tools/clang
 mv ../lld-${VERSION}.src tools/lld
 mv ../libunwind-${VERSION}.src projects/libunwind
 mv ../compiler-rt-${VERSION}.src projects/compiler-rt
-sed '/^set(LLVM_COMMON_CMAKE_UTILS/s@../cmake@../../llvm-cmake-17.src@' -i projects/{compiler-rt,libunwind}/CMakeLists.txt
+sed '/^set(LLVM_COMMON_CMAKE_UTILS/d' -i projects/{compiler-rt,libunwind}/CMakeLists.txt
 ln -sr projects/libunwind ..
 
 if [[ $1 = libcxx ]]; then
@@ -73,7 +73,7 @@ if [[ $1 = libcxx ]]; then
 	sed 's@../runtimes@llvm-runtimes-17.src@' -i \
 		projects/compiler-rt/cmake/Modules/AddCompilerRT.cmake \
 		projects/compiler-rt/lib/sanitizer_common/symbolizer/scripts/build_symbolizer.sh
-	_args=(-DLIB{CXX{,ABI},UNWIND}_INSTALL_LIBRARY_DIR=lib)
+	_args=(-DLIBCXX{,ABI}_INSTALL_LIBRARY_DIR=lib)
 else
 	for M in {HandleFlags,WarningFlags}.cmake; do
 		if [ ! -e projects/libunwind/cmake/Modules/$M ]; then
@@ -81,7 +81,6 @@ else
 				https://github.com/llvm/llvm-project/raw/llvmorg-${VERSION}/runtimes/cmake/Modules/$M
 		fi
 	done
-	_args=(-DLIBUNWIND_INSTALL_LIBRARY_DIR=lib)
 fi
 
 grep -rl '#!.*python' | xargs sed -i '1s/python$/python3/'
@@ -116,8 +115,9 @@ cmake -DCMAKE_INSTALL_PREFIX=/usr           \
       -DLLVM_INCLUDE_TESTS=OFF \
       -DLLVM_HOST_TRIPLE=$(gcc -dumpmachine) \
       -DCLANG_CONFIG_FILE_SYSTEM_DIR=/usr/lib/clang \
+      -DLIBUNWIND_INSTALL_LIBRARY_DIR=/usr/lib \
       -Wno-dev -G Ninja "${_args[@]}" ..
-
+# LIBUNWIND_INSTALL_LIBRARY_DIR 如果是相对路径可能会是相对于 当前目录，而不是 CMAKE_INSTALL_PREFIX
 ninja
 ninja install
 rm -rf ../../DEST
