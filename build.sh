@@ -16,6 +16,9 @@ SRC=(
 	https://github.com/llvm/llvm-project/releases/download/llvmorg-${VERSION}/lld-${VERSION}.src.tar.xz
 	https://github.com/llvm/llvm-project/releases/download/llvmorg-${VERSION}/libunwind-${VERSION}.src.tar.xz
 )
+# https://anduin.linuxfromscratch.org/BLFS/llvm/llvm-cmake-17.src.tar.xz
+# https://anduin.linuxfromscratch.org/BLFS/llvm/llvm-third-party-17.src.tar.xz
+
 # /build/llvm-17.0.6.src/tools/lld/MachO/Target.h:23:10: fatal error: mach-o/compact_unwind_encoding.h: No such file or directory
 #    23 | #include "mach-o/compact_unwind_encoding.h"
 
@@ -70,6 +73,7 @@ if [[ $1 = libcxx ]]; then
 	sed 's@../runtimes@llvm-runtimes-17.src@' -i \
 		projects/compiler-rt/cmake/Modules/AddCompilerRT.cmake \
 		projects/compiler-rt/lib/sanitizer_common/symbolizer/scripts/build_symbolizer.sh
+	_args=(-DLIB{CXX{,ABI},UNWIND}_INSTALL_LIBRARY_DIR=lib)
 else
 	for M in {HandleFlags,WarningFlags}.cmake; do
 		if [ ! -e projects/libunwind/cmake/Modules/$M ]; then
@@ -77,6 +81,7 @@ else
 				https://github.com/llvm/llvm-project/raw/llvmorg-${VERSION}/runtimes/cmake/Modules/$M
 		fi
 	done
+	_args=(-DLIBUNWIND_INSTALL_LIBRARY_DIR=lib)
 fi
 
 grep -rl '#!.*python' | xargs sed -i '1s/python$/python3/'
@@ -111,8 +116,7 @@ cmake -DCMAKE_INSTALL_PREFIX=/usr           \
       -DLLVM_INCLUDE_TESTS=OFF \
       -DLLVM_HOST_TRIPLE=$(gcc -dumpmachine) \
       -DCLANG_CONFIG_FILE_SYSTEM_DIR=/usr/lib/clang \
-      -DLIB{CXX{,ABI},UNWIND}_INSTALL_LIBRARY_DIR=lib \
-      -Wno-dev -G Ninja ..
+      -Wno-dev -G Ninja "${_args[@]}" ..
 
 ninja
 ninja install
@@ -135,6 +139,7 @@ fi
 
 ln -s clang.cfg "../../DEST/usr/lib/clang/clang++.cfg"
 cp ../../DEST/usr/lib/clang/*.cfg "/usr/lib/clang/"
+
 echo "$VERSION" > $PWD/../../VERSION
 clang -v
 ld.lld --version
