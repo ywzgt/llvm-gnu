@@ -118,7 +118,7 @@ cmake -DCMAKE_INSTALL_PREFIX=/usr           \
       -DLIBUNWIND_INSTALL_LIBRARY_DIR=/usr/lib \
       -Wno-dev -G Ninja "${_args[@]}" ..
 # LIBUNWIND_INSTALL_LIBRARY_DIR 如果是相对路径可能会是相对于 当前目录，而不是 CMAKE_INSTALL_PREFIX
-ninja
+ninja || { ninja install-llvm-libraries &> install.llvm.log; ninja; }
 ninja install
 rm -rf ../../DEST
 DESTDIR=$PWD/../../DEST ninja install &> /dev/null
