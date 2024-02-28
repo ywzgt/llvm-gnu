@@ -93,8 +93,7 @@ cd build
 
 src_config() {
 	if command -v clang{,++} > /dev/null; then
-		CC=clang CXX=clang++ "$@" \
-		-DCMAKE_SKIP_RPATH=ON
+		CC=clang CXX=clang++ "$@"
 	else
 		CC=gcc CXX=g++ "$@"
 	fi
