@@ -117,14 +117,13 @@ fi
 
 mkdir -v build
 cd build
-echo
 
 src_config() {
 	if command -v clang{,++} > /dev/null; then
-		CC=clang CXX=clang++ "$@" \
-		-DCMAKE_SKIP_RPATH=ON
+		CC=clang CXX=clang++ "$@"
 	else
-		CC=gcc CXX=g++ "$@"
+		CC=gcc CXX=g++ "$@" \
+		-DLLVM_USE_LINKER=gold
 	fi
 }
 
@@ -145,6 +144,7 @@ cmake -DCMAKE_INSTALL_PREFIX=/usr           \
       -DCLANG_CONFIG_FILE_SYSTEM_DIR=/usr/lib/clang \
       -DLIBUNWIND_INSTALL_LIBRARY_DIR=/usr/lib \
       -Wno-dev -G Ninja "${_args[@]}" ..
+
 # LIBUNWIND_INSTALL_LIBRARY_DIR 如果是相对路径可能会是相对于 当前目录，而不是 CMAKE_INSTALL_PREFIX
 
 ninja
