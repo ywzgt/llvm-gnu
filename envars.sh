@@ -7,10 +7,10 @@ case $(uname -m) in
 		;;
 esac
 
-export CFLAGS="$CFLAGS -mtune=haswell -O2 -pipe -fno-plt -fPIC -ffunction-sections -fdata-sections"
+export CFLAGS="$CFLAGS -mtune=haswell -O2 -pipe -fno-plt -fPIC"
 export CXXFLAGS="$CFLAGS -Wp,-D_GLIBCXX_ASSERTIONS"
 export CPPFLAGS="-DNDEBUG"
-export LDFLAGS="-Wl,-O2,--sort-common,--as-needed,-z,relro,-z,now,--gc-sections"
+export LDFLAGS="-Wl,-O2,--sort-common,--as-needed,-z,relro,-z,now"
 export MAKEFLAGS="-j$(nproc)"
 export NINJAJOBS="$(nproc)"
 export NINJA_STATUS="[%r %f/%t %es] "
