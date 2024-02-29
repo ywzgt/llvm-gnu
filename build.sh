@@ -120,7 +120,9 @@ cd build
 
 src_config() {
 	if command -v clang{,++} > /dev/null; then
-		CC=clang CXX=clang++ "$@"
+		CC=clang CXX=clang++ "$@" \
+		-DLIBCXX_HAS_GCC_S_LIB=OFF \
+		-DLIB{UNWIND,CXX{,ABI}}_USE_COMPILER_RT=ON
 	else
 		CC=gcc CXX=g++ "$@" \
 		-DLLVM_USE_LINKER=gold
@@ -171,5 +173,3 @@ cp ../../DEST/usr/lib/clang/*.cfg "/usr/lib/clang/"
 
 echo "$VERSION" > $PWD/../../VERSION
 clang -v
-echo
-ld.lld --version

@@ -56,14 +56,14 @@ remove_rpath() {
 	find "${DEST}" -type f -perm -u+w -print0 2>/dev/null | while IFS= read -rd '' binary
 	do
 		if chrpath -l "$binary" > /dev/null 2>&1; then
-			chrpath -d "$binary"
+			echo ":: ${binary#$DEST/}"; chrpath -d "$binary"
 		fi
 	done
 }
 
 if [[ -n $1 && -e $1 ]]; then
-	DEST="$(realpath $1)"; do_strip
-	remove_rpath
+	DEST="$(realpath $1)"
+	do_strip; remove_rpath
 else
 	echo "No such file or directory: $1"
 	exit 1
