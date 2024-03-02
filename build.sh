@@ -6,17 +6,19 @@ source envars.sh
 ELIBC=gnu
 STDLIB=libcxx
 VERSION=17.0.6
+URL="https://github.com/llvm/llvm-project"
 
 SRC=(
-	https://github.com/llvm/llvm-project/releases/download/llvmorg-${VERSION}/llvm-${VERSION}.src.tar.xz
-	https://github.com/llvm/llvm-project/releases/download/llvmorg-${VERSION}/cmake-${VERSION}.src.tar.xz
-	https://github.com/llvm/llvm-project/releases/download/llvmorg-${VERSION}/third-party-${VERSION}.src.tar.xz
+	${URL}/releases/download/llvmorg-${VERSION}/llvm-${VERSION}.src.tar.xz
+	${URL}/releases/download/llvmorg-${VERSION}/cmake-${VERSION}.src.tar.xz
+	${URL}/releases/download/llvmorg-${VERSION}/third-party-${VERSION}.src.tar.xz
+
+	${URL}/releases/download/llvmorg-${VERSION}/clang-${VERSION}.src.tar.xz
+	${URL}/releases/download/llvmorg-${VERSION}/compiler-rt-${VERSION}.src.tar.xz
+	${URL}/releases/download/llvmorg-${VERSION}/lld-${VERSION}.src.tar.xz
+	${URL}/releases/download/llvmorg-${VERSION}/libunwind-${VERSION}.src.tar.xz
 
 	https://www.linuxfromscratch.org/patches/blfs/svn/clang-17-enable_default_ssp-1.patch
-	https://github.com/llvm/llvm-project/releases/download/llvmorg-${VERSION}/clang-${VERSION}.src.tar.xz
-	https://github.com/llvm/llvm-project/releases/download/llvmorg-${VERSION}/compiler-rt-${VERSION}.src.tar.xz
-	https://github.com/llvm/llvm-project/releases/download/llvmorg-${VERSION}/lld-${VERSION}.src.tar.xz
-	https://github.com/llvm/llvm-project/releases/download/llvmorg-${VERSION}/libunwind-${VERSION}.src.tar.xz
 )
 # https://anduin.linuxfromscratch.org/BLFS/llvm/llvm-cmake-17.src.tar.xz
 # https://anduin.linuxfromscratch.org/BLFS/llvm/llvm-third-party-17.src.tar.xz
@@ -37,9 +39,9 @@ done
 
 if [[ $STDLIB = libcxx ]]; then
 	SRC+=(
-		https://github.com/llvm/llvm-project/releases/download/llvmorg-${VERSION}/libcxx-${VERSION}.src.tar.xz
-		https://github.com/llvm/llvm-project/releases/download/llvmorg-${VERSION}/libcxxabi-${VERSION}.src.tar.xz
-		https://github.com/llvm/llvm-project/releases/download/llvmorg-${VERSION}/runtimes-${VERSION}.src.tar.xz
+		${URL}/releases/download/llvmorg-${VERSION}/libcxx-${VERSION}.src.tar.xz
+		${URL}/releases/download/llvmorg-${VERSION}/libcxxabi-${VERSION}.src.tar.xz
+		${URL}/releases/download/llvmorg-${VERSION}/runtimes-${VERSION}.src.tar.xz
 	)
 fi
 
@@ -78,7 +80,8 @@ if [[ $STDLIB = libcxx ]]; then
 	mv ../runtimes-${VERSION}.src llvm-runtimes-17.src
 	sed -e '/^set(LLVM_COMMON_CMAKE_UTILS/s@../cmake@../llvm-cmake-17.src@' \
 		-e '/LLVM_THIRD_PARTY_DIR/s@../third-party@../llvm-third-party-17.src@' \
-		-e '/..\/llvm\(\/\|)\)/s/\/llvm//' -e '/${CMAKE_CURRENT_SOURCE_DIR}\/..\/${proj}/s/${proj}/projects\/&/' \
+		-e '/..\/llvm\(\/\|)\)/s/\/llvm//' \
+		-e '/${CMAKE_CURRENT_SOURCE_DIR}\/..\/${proj}/s/${proj}/projects\/&/' \
 		-i llvm-runtimes-17.src/CMakeLists.txt
 	sed '/CMAKE_CURRENT_SOURCE_DIR/s@../runtimes@llvm-runtimes-17.src@' \
 		-i runtimes/CMakeLists.txt
@@ -91,7 +94,7 @@ else
 	for M in {HandleFlags,WarningFlags}.cmake; do
 		if [ ! -e projects/libunwind/cmake/Modules/$M ]; then
 			wget -nv -cP projects/libunwind/cmake/Modules \
-				https://github.com/llvm/llvm-project/raw/llvmorg-${VERSION}/runtimes/cmake/Modules/$M
+				${URL}/raw/llvmorg-${VERSION}/runtimes/cmake/Modules/$M
 		fi
 	done
 fi
@@ -99,6 +102,7 @@ fi
 grep -rl '#!.*python' | xargs sed -i '1s/python$/python3/'
 
 if [[ $ELIBC != musl ]]; then
+	_args+=(-DCAN_TARGET_i386=OFF)
 	patch -Np2 -d tools/clang <../clang-17-enable_default_ssp-1.patch
 	sed 's/clang_dfsan/& -fno-stack-protector/' \
 		-i projects/compiler-rt/test/dfsan/origin_unaligned_memtrans.c
@@ -119,10 +123,24 @@ mkdir -v build
 cd build
 
 src_config() {
+	if [[ $STDLIB = libcxx ]]; then
+		local _flags=(
+		 -DLIBCXX{,ABI}_USE_COMPILER_RT=ON
+		 -DSANITIZER_CXX_ABI=libcxxabi
+		 -DCLANG_DEFAULT_LINKER=lld
+		 -DCLANG_DEFAULT_CXX_STDLIB=libc++
+		 -DCLANG_DEFAULT_RTDLIB=compiler-rt
+		 -DCLANG_DEFAULT_UNWINDLIB=libunwind
+		 -DCLANG_DEFAULT_OBJCOPY=llvm-objcopy
+		)
+	fi
+
 	if command -v clang{,++} > /dev/null; then
 		CC=clang CXX=clang++ "$@" \
-		-DLIBCXX_HAS_GCC_S_LIB=OFF \
-		-DLIB{UNWIND,CXX{,ABI}}_USE_COMPILER_RT=ON
+		-DLIBCXX_HAS_ATOMIC_LIB=OFF \
+		-DLIBUNWIND_USE_COMPILER_RT=ON \
+		-DCOMPILER_RT_USE_BUILTINS_LIBRARY=ON \
+		"${_flags[@]}"
 	else
 		CC=gcc CXX=g++ "$@" \
 		-DLLVM_USE_LINKER=gold
@@ -144,10 +162,8 @@ cmake -DCMAKE_INSTALL_PREFIX=/usr           \
       -DLLVM_INCLUDE_TESTS=OFF \
       -DLLVM_HOST_TRIPLE=$(gcc -dumpmachine) \
       -DCLANG_CONFIG_FILE_SYSTEM_DIR=/usr/lib/clang \
-      -DLIBUNWIND_INSTALL_LIBRARY_DIR=/usr/lib \
+      -DLIBUNWIND_INSTALL_LIBRARY_DIR:PATH=lib \
       -Wno-dev -G Ninja "${_args[@]}" ..
-
-# LIBUNWIND_INSTALL_LIBRARY_DIR 如果是相对路径可能会是相对于 当前目录，而不是 CMAKE_INSTALL_PREFIX
 
 ninja
 ninja install
@@ -170,6 +186,15 @@ fi
 
 ln -s clang.cfg "../../DEST/usr/lib/clang/clang++.cfg"
 cp ../../DEST/usr/lib/clang/*.cfg "/usr/lib/clang/"
+printf "\n"
 
 echo "$VERSION" > $PWD/../../VERSION
 clang -v
+printf "\n"
+
+for d in {../../DEST,}/; do
+	cxxdir="${d}usr/include/$(gcc -dumpmachine)/c++/v1"
+	[ -f "$cxxdir/__config_site" ] || continue
+	mv $cxxdir/{*,../../../include/c++/v1}
+	rmdir -p $cxxdir --ignore-fail-on-non-empty
+done
