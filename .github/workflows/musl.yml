@@ -4,7 +4,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     permissions: write-all
     steps:
     - name: Checkout Repository
@@ -12,7 +12,7 @@ jobs:
 
     - name: Preparing LFS rootfs and Setting Up the Environment
       run: |
-        wget -nv -c https://github.com/ywzgt/alfs-musl/releases/latest/download/rootfs.tar.xz{,.sha256}
+        wget -nv -c https://github.com/ywzgt/alfs-musl/releases/download/20240220.x32/rootfs.tar.xz{,.sha256}
         sha256sum -c rootfs.tar.xz.sha256
         sudo mkdir -v rootfs
         echo " -> Extracting the 'rootfs.tar.xz'..."

@@ -1,10 +1,9 @@
-# curl -s https://linuxfromscratch.org/blfs/view/systemd/general/llvm.html | grep -o 'https://.*.\(xz\|patch\)' | uniq
+#!/bin/bash
 
 set -e
 source envars.sh
 
 ELIBC=gnu
-STDLIB=libcxx
 VERSION=17.0.6
 PKG="$PWD/DEST"
 URL="https://github.com/llvm/llvm-project"
@@ -15,131 +14,60 @@ SRC=(
 	${URL}/releases/download/llvmorg-${VERSION}/third-party-${VERSION}.src.tar.xz
 
 	${URL}/releases/download/llvmorg-${VERSION}/clang-${VERSION}.src.tar.xz
-	${URL}/releases/download/llvmorg-${VERSION}/compiler-rt-${VERSION}.src.tar.xz
 	${URL}/releases/download/llvmorg-${VERSION}/lld-${VERSION}.src.tar.xz
 	${URL}/releases/download/llvmorg-${VERSION}/libunwind-${VERSION}.src.tar.xz
 
 	https://www.linuxfromscratch.org/patches/blfs/svn/clang-17-enable_default_ssp-1.patch
 )
-# https://anduin.linuxfromscratch.org/BLFS/llvm/llvm-cmake-17.src.tar.xz
-# https://anduin.linuxfromscratch.org/BLFS/llvm/llvm-third-party-17.src.tar.xz
-# /build/llvm-17.0.6.src/tools/lld/MachO/Target.h:23:10: fatal error: mach-o/compact_unwind_encoding.h: No such file or directory
-#    23 | #include "mach-o/compact_unwind_encoding.h"
 
 for arg in $@; do
 	case "$arg" in
 		musl)
 			ELIBC=musl
 			;;
-		nolibcxx)
-			STDLIB=
-			;;
 	esac
 done
 
-if [[ $STDLIB = libcxx ]]; then
-	SRC+=(
-		${URL}/releases/download/llvmorg-${VERSION}/libcxx-${VERSION}.src.tar.xz
-		${URL}/releases/download/llvmorg-${VERSION}/libcxxabi-${VERSION}.src.tar.xz
-		${URL}/releases/download/llvmorg-${VERSION}/runtimes-${VERSION}.src.tar.xz
-	)
-fi
-
-rm -rf libunwind llvm-${VERSION}.src
+rm -rf *-${VERSION}.src \
+    {cmake,third-party,libunwind}
 for i in ${SRC[@]}; do
 	wget -nv -c $i
 	if ! [[ $i =~ BLFS ]]; then
 		f=$(basename $i)
-		if [[ $f = *.src.tar.xz && ! -d ${f%.tar.xz} ]]; then
+		if [[ $f = *.src.tar.xz && ! -d ${f%.tar.xz} ]]
+        then
 			echo "Extracting $f..."
 			tar xf $f &
 		fi
 	fi
 done
 
-cd llvm-${VERSION}.src
-sed '/LLVM_COMMON_CMAKE_UTILS/s@../cmake@llvm-cmake-17.src@'          \
-    -i CMakeLists.txt
-sed '/LLVM_THIRD_PARTY_DIR/s@../third-party@llvm-third-party-17.src@' \
-    -i cmake/modules/HandleLLVMOptions.cmake
-
 while pidof -q tar; do sleep 0.1; done
-mv ../cmake-${VERSION}.src llvm-cmake-17.src
-mv ../third-party-${VERSION}.src llvm-third-party-17.src
+for i in cmake third-party libunwind
+do
+    ln -s $i{-${VERSION}.src,}
+done
 mv ../clang-${VERSION}.src tools/clang
 mv ../lld-${VERSION}.src tools/lld
-mv ../libunwind-${VERSION}.src projects/libunwind
-mv ../compiler-rt-${VERSION}.src projects/compiler-rt
-sed '/^set(LLVM_COMMON_CMAKE_UTILS/d' -i projects/{compiler-rt,libunwind}/CMakeLists.txt
-ln -sr projects/libunwind ..
-
-if [[ $STDLIB = libcxx ]]; then
-	mv ../libcxx-${VERSION}.src projects/libcxx
-	mv ../libcxxabi-${VERSION}.src projects/libcxxabi
-	cp -ri ../runtimes-${VERSION}.src/cmake/* llvm-cmake-17.src  # libc++abi testing configuration
-	mv ../runtimes-${VERSION}.src llvm-runtimes-17.src
-	sed -e '/^set(LLVM_COMMON_CMAKE_UTILS/s@../cmake@../llvm-cmake-17.src@' \
-		-e '/LLVM_THIRD_PARTY_DIR/s@../third-party@../llvm-third-party-17.src@' \
-		-e '/..\/llvm\(\/\|)\)/s/\/llvm//' \
-		-e '/${CMAKE_CURRENT_SOURCE_DIR}\/..\/${proj}/s/${proj}/projects\/&/' \
-		-i llvm-runtimes-17.src/CMakeLists.txt
-	sed '/CMAKE_CURRENT_SOURCE_DIR/s@../runtimes@llvm-runtimes-17.src@' \
-		-i runtimes/CMakeLists.txt
-	sed '/^set(LLVM_COMMON_CMAKE_UTILS/d' -i projects/libcxx{,abi}/CMakeLists.txt
-	sed 's@../runtimes@llvm-runtimes-17.src@' -i \
-		projects/compiler-rt/cmake/Modules/AddCompilerRT.cmake \
-		projects/compiler-rt/lib/sanitizer_common/symbolizer/scripts/build_symbolizer.sh
-	_args=(-DLIBCXX{,ABI}_INSTALL_LIBRARY_DIR=lib)
-else
-	for M in {HandleFlags,WarningFlags}.cmake; do
-		if [ ! -e projects/libunwind/cmake/Modules/$M ]; then
-			wget -nv -cP projects/libunwind/cmake/Modules \
-				${URL}/raw/llvmorg-${VERSION}/runtimes/cmake/Modules/$M
-		fi
-	done
-fi
 
 grep -rl '#!.*python' | xargs sed -i '1s/python$/python3/'
 
 if [[ $ELIBC != musl ]]; then
 	patch -Np2 -d tools/clang <../clang-17-enable_default_ssp-1.patch
-	sed 's/clang_dfsan/& -fno-stack-protector/' \
-		-i projects/compiler-rt/test/dfsan/origin_unaligned_memtrans.c
 else
-	_args+=(-DCOMPILER_RT_BUILD_GWP_ASAN=OFF)
-	[ "$STDLIB" = libcxx ] && _args+=(-DLIBCXX_HAS_MUSL_LIBC=ON)
-	if [[ $(gcc -dumpmachine) = i?86-*-musl ]]; then
-		sed -i 's,^# Setup flags.$,add_library_flags(ssp_nonshared),' \
-			projects/libunwind/src/CMakeLists.txt
-		sed -i 's,^# Setup flags.$,add_library_flags(ssp_nonshared),' \
-			projects/libcxxabi/src/CMakeLists.txt
-		sed -i 's,#ssp,,' projects/libcxx/CMakeLists.txt
-		_args+=(-DCOMPILER_RT_BUILD_SANITIZERS=OFF)
-	fi
+	_args=(-DCOMPILER_RT_BUILD_GWP_ASAN=OFF)
 fi
 
-mkdir -v build
-cd build
-
 src_config() {
-	if [[ $STDLIB = libcxx ]]; then
-		local _flags=(
-		 -DLIBCXX{,ABI}_USE_COMPILER_RT=ON
-		 -DSANITIZER_CXX_ABI=libcxxabi
-		 -DCLANG_DEFAULT_LINKER=lld
-		 -DCLANG_DEFAULT_CXX_STDLIB=libc++
-		 -DCLANG_DEFAULT_RTDLIB=compiler-rt
-		 -DCLANG_DEFAULT_UNWINDLIB=libunwind
-		 -DCLANG_DEFAULT_OBJCOPY=llvm-objcopy
-		)
-	fi
+	local _flags=(
+	 -DCLANG_DEFAULT_LINKER=lld
+	 -DCLANG_DEFAULT_OPENMP_RUNTIME=libgomp
+	 -DCLANG_DEFAULT_OBJCOPY=llvm-objcopy
+	)
 
 	if command -v clang{,++} > /dev/null; then
 		CC=clang CXX=clang++ "$@" \
-		-DLIBCXX_HAS_ATOMIC_LIB=OFF \
-		-DLIBUNWIND_USE_COMPILER_RT=ON \
-		-DCOMPILER_RT_USE_BUILTINS_LIBRARY=ON \
-		"${_flags[@]}"
+        -DLLVM_USE_LINKER=lld "${_flags[@]}"
 	else
 		CC=gcc CXX=g++ "$@" \
 		-DLLVM_USE_LINKER=gold
@@ -161,45 +89,22 @@ cmake -DCMAKE_INSTALL_PREFIX=/usr           \
       -DLLVM_INCLUDE_TESTS=OFF \
       -DLLVM_HOST_TRIPLE=$(gcc -dumpmachine) \
       -DCLANG_CONFIG_FILE_SYSTEM_DIR=/usr/lib/clang \
-      -DLIBUNWIND_INSTALL_LIBRARY_DIR:PATH=lib \
-      -Wno-dev -G Ninja "${_args[@]}" ..
+      -Wno-dev -G Ninja "${_args[@]}" \
+      -B build -S llvm-${VERSION}.src
 
-echo 'int main(){}' > main.c
-if gcc -m32 main.c 2> /dev/null; then
-	sed -i.orig '/-i386/s/-march=x86-64\(\|-v[2-4]\)/-march=i686/g;/DEP_FILE = .*-i386/{n;s/-march=x86-64\(\|-v[2-4]\)/-march=i686/g}' build.ninja
-fi
-rm -f main.c a.out
-
-ninja
-ninja install
+ninja -C build
+ninja -C build install
 rm -rf $PKG
-DESTDIR=$PKG ninja install &> /dev/null
+DESTDIR=$PKG ninja -C build install &> /dev/null
 
 # https://packages.gentoo.org/packages/sys-devel/clang-common
 cat > $PKG/usr/lib/clang/clang.cfg <<-EOF
 	# It is used to control the default runtimes using by clang.
 
-	--rtlib=compiler-rt
-	--unwindlib=libunwind
-	--stdlib=libc++
-	-fuse-ld=lld
 EOF
-
-if [[ $STDLIB != libcxx ]]; then
-	sed -i '/--stdlib=libc++$/d' $PKG/usr/lib/clang/clang.cfg
-fi
 
 ln -s clang.cfg "$PKG/usr/lib/clang/clang++.cfg"
 cp $PKG/usr/lib/clang/*.cfg "/usr/lib/clang/"
-printf "\n"
 
 echo "$VERSION" > $PWD/../../VERSION
 clang -v
-printf "\n"
-
-for d in {$PKG,}/; do
-	cxxdir="${d}usr/include/$(gcc -dumpmachine)/c++/v1"
-	[ -f "$cxxdir/__config_site" ] || continue
-	mv $cxxdir/{*,../../../c++/v1}
-	rmdir -p $cxxdir --ignore-fail-on-non-empty
-done

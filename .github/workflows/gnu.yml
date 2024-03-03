@@ -1,10 +1,10 @@
-name: llvm
+name: llvm x32
 on:
   workflow_dispatch:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     permissions: write-all
     steps:
     - name: Checkout Repository
@@ -12,7 +12,7 @@ jobs:
 
     - name: Preparing LFS rootfs and Setting Up the Environment
       run: |
-        wget -nv -c https://github.com/ywzgt/alfs-sysroot/releases/latest/download/rootfs.tar.xz{,.sha256}
+        wget -nv -c https://github.com/ywzgt/alfs-sysroot/releases/download/20240220.x32/rootfs.tar.xz{,.sha256}
         sha256sum -c rootfs.tar.xz.sha256
         sudo mkdir -v rootfs
         echo " -> Extracting the 'rootfs.tar.xz'..."
@@ -34,18 +34,13 @@ jobs:
     - name: CMAKE
       run: sudo chroot rootfs /usr/bin/env -i HOME=/root TERM=$TERM PATH=/usr/bin:/usr/sbin /bin/bash --login -c "cd /build; bash cmake.sh"
     - name: Run script to build llvm
-      run: sudo chroot rootfs /usr/bin/env -i HOME=/root TERM=$TERM PATH=/usr/bin:/usr/sbin /bin/bash --login -c "cd /build; bash build.sh; for i in \$(find . -name \*.orig); do echo \$i; diff -u \$i \${i%.orig}; done"
-    - name: Run script to build multilib
-      run: sudo chroot rootfs /usr/bin/env -i HOME=/root TERM=$TERM PATH=/usr/bin:/usr/sbin /bin/bash --login -c "cd /build; bash multilib.sh pre"
+      run: sudo chroot rootfs /usr/bin/env -i HOME=/root TERM=$TERM PATH=/usr/bin:/usr/sbin /bin/bash --login -c "cd /build; bash build.sh"
     - name: Run script to build llvm pass2
-      run: sudo chroot rootfs /usr/bin/env -i HOME=/root TERM=$TERM PATH=/usr/bin:/usr/sbin /bin/bash --login -c "cd /build; bash build.sh; for i in \$(find . -name \*.orig); do echo \$i; diff -u \$i \${i%.orig}; done"
-    - name: Run script to build multilib pass2
-      run: sudo chroot rootfs /usr/bin/env -i HOME=/root TERM=$TERM PATH=/usr/bin:/usr/sbin /bin/bash --login -c "cd /build; bash multilib.sh"
-
+      run: sudo chroot rootfs /usr/bin/env -i HOME=/root TERM=$TERM PATH=/usr/bin:/usr/sbin /bin/bash --login -c "cd /build; bash build.sh"
     - name: Run script to strip
       run: sudo chroot rootfs /usr/bin/env -i HOME=/root TERM=$TERM PATH=/usr/bin:/usr/sbin /bin/bash --login -c "cd /build; bash -e strip.sh DEST"
     - name: Package
-      run: V=$(<rootfs/build/VERSION); (cd rootfs/build/DEST; sudo tar cf - .|xz -T0) > llvm-$V.tar.xz; echo "TAG_VERSION=$V-$(date +%Y%m%d)" >> $GITHUB_ENV
+      run: V=$(<rootfs/build/VERSION); (cd rootfs/build/DEST; sudo tar cf - .|xz -T0) > llvm-x32-$V.tar.xz; echo "TAG_VERSION=$V-$(date +%Y%m%d)" >> $GITHUB_ENV
 
     - name: Upload to Releases
       if: ${{ env.TAG_VERSION != '' }}
