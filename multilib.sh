@@ -17,7 +17,7 @@ SRC=(
 )
 
 pre_src() {
-	mkdir bld_multi
+	rm -rf bld_multi; mkdir bld_multi
 	for f in ${SRC[@]}; do
 		tar xf $f-${VERSION}.src.tar.xz -C bld_multi
 		ln -srv bld_multi/$f{-$VERSION.src,}
@@ -36,7 +36,6 @@ pre_src() {
 
 	ln -s /bin/clang i386-pc-linux-gnu-clang
 	ln -s /bin/clang++ i386-pc-linux-gnu-clang++
-
 	CFLAGS="${CFLAGS/x86-64-v3/i686}"
 	CXXFLAGS="${CXXFLAGS/x86-64-v3/i686}"
 }
@@ -56,7 +55,7 @@ stage1() {
 	-DCMAKE_INSTALL_PREFIX=/usr \
 	-DCMAKE_BUILD_TYPE=Release -GNinja \
 	-DLLVM_ENABLE_RUNTIMES="libunwind;libcxx;libcxxabi"
-	DESTDIR=$PWD/pkg cmake --install build
+	DESTDIR=$PWD/pkg ninja install -C build
 	cp -a pkg/usr/lib/* /usr/lib32/
 
 	rm -rf build pkg
@@ -66,7 +65,7 @@ stage1() {
 	-DCMAKE_BUILD_TYPE=Release -GNinja \
 	-DCAN_TARGET_i386=ON -DCAN_TARGET_x86_64=OFF \
 	-DLLVM_ENABLE_RUNTIMES=compiler-rt "${rt_args[@]}"
-	DESTDIR=$PWD/pkg cmake --install build
+	DESTDIR=$PWD/pkg ninja install -C build
 	for i in pkg/usr/lib/linux/*-i386.*; do
 		f=${i##*/}
 		install -Dvm644 $i "${rt_install_dir}/${f/-i386}"
@@ -84,13 +83,23 @@ stage2() {
 	-DLLVM_ENABLE_RUNTIMES="libunwind;libcxx;libcxxabi" \
 	-DLIBCXX_HAS_ATOMIC_LIB=OFF \
 	-DLIB{UNWIND,CXX{,ABI}}_USE_COMPILER_RT=ON
-	DESTDIR=$PWD/pkg cmake --install build
+	DESTDIR=$PWD/pkg ninja install -C build
 	mkdir -p "$PKG/usr/lib32"
 	cp -a pkg/usr/lib/* /usr/lib32/
 	cp -a pkg/usr/lib/* "$PKG/usr/lib32/"
 
-	rm -rf build pkg; [ $# -eq 0 ] || return 0
+	if [[ -f ${rt_install_dir}/libclang_rt.asan.so && $# -gt 0 ]]; then
+		echo "::The 32-bit compiler-rt built-in library and sanitizers already exists! "
+		echo "::SKIP build compiler-rt."
+		return
+	else
+		rm -rf "${PKG}${rt_install_dir}"
+	fi
+
+	rm -rf build pkg
 	CC=clang CXX=clang++ \
+	CFLAGS="${CFLAGS/-march=i686}" \
+	CXXFLAGS="${CXXFLAGS/-march=i686}" \
 	cmake -S runtimes -B build \
 	-DCMAKE_INSTALL_PREFIX=/usr \
 	-DCMAKE_BUILD_TYPE=Release -GNinja \
@@ -100,14 +109,16 @@ stage2() {
 	-DCOMPILER_RT_USE_BUILTINS_LIBRARY=ON \
 	-DLLVM_DEFAULT_TARGET_TRIPLE=$(gcc -dumpmachine) \
 	-DSANITIZER_CXX_ABI=libcxxabi
-	DESTDIR=$PWD/pkg cmake --install build
+	DESTDIR=$PWD/pkg ninja install -C build
 	for i in pkg/usr/lib/linux/*-i386.*; do
 		f=${i##*/}
-		install -Dvm644 $i "${rt_install_dir}/${f/-i386}"
+		[ $# -eq 0 ] || install -Dvm644 $i "${rt_install_dir}/${f/-i386}"
 	done
-	chmod 755 ${rt_install_dir}/*.so
-	mkdir -p ${PKG}${rt_install_dir%i386-*}
-	cp -a ${rt_install_dir} "${PKG}${rt_install_dir%i386-*}"
+	if [ $# -gt 0 ]; then
+		chmod 755 ${rt_install_dir}/*.so
+		mkdir -p ${PKG}${rt_install_dir%/i386-*}
+		cp -a ${rt_install_dir} "${PKG}${rt_install_dir%/i386-*}"
+	fi
 }
 
 echo 'int main(){}' > main.c
@@ -119,12 +130,11 @@ else
 fi
 
 pre_src
-rt_install_dir="/usr/lib/clang/${VERSION::1}/lib/i386-pc-linux-gnu"
+rt_install_dir="/usr/lib/clang/${VERSION%%.*}/lib/i386-pc-linux-gnu"
 
 if [[ $1 != pre ]]; then
 	stage2 "::PASS1\n"
 	stage2 "::PASS2\n"
 else
-	stage1
-	stage2
+	stage1; stage2
 fi

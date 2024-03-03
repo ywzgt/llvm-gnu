@@ -6,6 +6,7 @@ source envars.sh
 ELIBC=gnu
 STDLIB=libcxx
 VERSION=17.0.6
+PKG="$PWD/DEST"
 URL="https://github.com/llvm/llvm-project"
 
 SRC=(
@@ -22,7 +23,6 @@ SRC=(
 )
 # https://anduin.linuxfromscratch.org/BLFS/llvm/llvm-cmake-17.src.tar.xz
 # https://anduin.linuxfromscratch.org/BLFS/llvm/llvm-third-party-17.src.tar.xz
-
 # /build/llvm-17.0.6.src/tools/lld/MachO/Target.h:23:10: fatal error: mach-o/compact_unwind_encoding.h: No such file or directory
 #    23 | #include "mach-o/compact_unwind_encoding.h"
 
@@ -102,7 +102,6 @@ fi
 grep -rl '#!.*python' | xargs sed -i '1s/python$/python3/'
 
 if [[ $ELIBC != musl ]]; then
-	_args+=(-DCAN_TARGET_i386=OFF)
 	patch -Np2 -d tools/clang <../clang-17-enable_default_ssp-1.patch
 	sed 's/clang_dfsan/& -fno-stack-protector/' \
 		-i projects/compiler-rt/test/dfsan/origin_unaligned_memtrans.c
@@ -165,13 +164,19 @@ cmake -DCMAKE_INSTALL_PREFIX=/usr           \
       -DLIBUNWIND_INSTALL_LIBRARY_DIR:PATH=lib \
       -Wno-dev -G Ninja "${_args[@]}" ..
 
+echo 'int main(){}' > main.c
+if gcc -m32 main.c 2> /dev/null; then
+	sed -i.orig '/i386/s/-march=x86-64\(\|-v[2-4]\)//g' build.ninja
+fi
+rm -f main.c a.out
+
 ninja
 ninja install
-rm -rf ../../DEST
-DESTDIR=$PWD/../../DEST ninja install &> /dev/null
+rm -rf $PKG
+DESTDIR=$PKG ninja install &> /dev/null
 
 # https://packages.gentoo.org/packages/sys-devel/clang-common
-cat > ../../DEST/usr/lib/clang/clang.cfg <<-EOF
+cat > $PKG/usr/lib/clang/clang.cfg <<-EOF
 	# It is used to control the default runtimes using by clang.
 
 	--rtlib=compiler-rt
@@ -181,20 +186,20 @@ cat > ../../DEST/usr/lib/clang/clang.cfg <<-EOF
 EOF
 
 if [[ $STDLIB != libcxx ]]; then
-	sed -i '/--stdlib=libc++$/d' ../../DEST/usr/lib/clang/clang.cfg
+	sed -i '/--stdlib=libc++$/d' $PKG/usr/lib/clang/clang.cfg
 fi
 
-ln -s clang.cfg "../../DEST/usr/lib/clang/clang++.cfg"
-cp ../../DEST/usr/lib/clang/*.cfg "/usr/lib/clang/"
+ln -s clang.cfg "$PKG/usr/lib/clang/clang++.cfg"
+cp $PKG/usr/lib/clang/*.cfg "/usr/lib/clang/"
 printf "\n"
 
 echo "$VERSION" > $PWD/../../VERSION
 clang -v
 printf "\n"
 
-for d in {../../DEST,}/; do
+for d in {$PKG,}/; do
 	cxxdir="${d}usr/include/$(gcc -dumpmachine)/c++/v1"
 	[ -f "$cxxdir/__config_site" ] || continue
-	mv $cxxdir/{*,../../../include/c++/v1}
+	mv $cxxdir/{*,../../../c++/v1}
 	rmdir -p $cxxdir --ignore-fail-on-non-empty
 done
