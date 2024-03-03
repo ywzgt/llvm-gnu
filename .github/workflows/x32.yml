@@ -4,7 +4,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     permissions: write-all
     steps:
     - name: Checkout Repository
@@ -34,9 +34,9 @@ jobs:
     - name: CMAKE
       run: sudo chroot rootfs /usr/bin/env -i HOME=/root TERM=$TERM PATH=/usr/bin:/usr/sbin /bin/bash --login -c "cd /build; bash cmake.sh"
     - name: Run script to build llvm
-      run: sudo chroot rootfs /usr/bin/env -i HOME=/root TERM=$TERM PATH=/usr/bin:/usr/sbin /bin/bash --login -c "cd /build; bash build.sh for i in \$(find . -name \*.orig); do echo \$i; diff -u \$i \${i%.orig}; done"
+      run: sudo chroot rootfs /usr/bin/env -i HOME=/root TERM=$TERM PATH=/usr/bin:/usr/sbin /bin/bash --login -c "cd /build; bash build.sh"
     - name: Run script to build llvm pass2
-      run: sudo chroot rootfs /usr/bin/env -i HOME=/root TERM=$TERM PATH=/usr/bin:/usr/sbin /bin/bash --login -c "cd /build; bash build.sh; for i in \$(find . -name \*.orig); do echo \$i; diff -u \$i \${i%.orig}; done"
+      run: sudo chroot rootfs /usr/bin/env -i HOME=/root TERM=$TERM PATH=/usr/bin:/usr/sbin /bin/bash --login -c "cd /build; bash build.sh"
     - name: Run script to strip
       run: sudo chroot rootfs /usr/bin/env -i HOME=/root TERM=$TERM PATH=/usr/bin:/usr/sbin /bin/bash --login -c "cd /build; bash -e strip.sh DEST"
     - name: Package
