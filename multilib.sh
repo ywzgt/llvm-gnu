@@ -98,8 +98,8 @@ stage2() {
 
 	rm -rf build pkg
 	CC=clang CXX=clang++ \
-	CFLAGS="${CFLAGS/-march=i686}" \
-	CXXFLAGS="${CXXFLAGS/-march=i686}" \
+	CFLAGS="${CFLAGS} -m32" \
+	CXXFLAGS="${CXXFLAGS} -m32" \
 	cmake -S runtimes -B build \
 	-DCMAKE_INSTALL_PREFIX=/usr \
 	-DCMAKE_BUILD_TYPE=Release -GNinja \

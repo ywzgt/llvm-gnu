@@ -166,7 +166,7 @@ cmake -DCMAKE_INSTALL_PREFIX=/usr           \
 
 echo 'int main(){}' > main.c
 if gcc -m32 main.c 2> /dev/null; then
-	sed -i.orig '/i386/s/-march=x86-64\(\|-v[2-4]\)//g' build.ninja
+	sed -i.orig '/i386/s/-march=x86-64\(\|-v[2-4]\)/-march=i686/g;/DEP_FILE = .*i386/{n;s/-march=x86-64\(\|-v[2-4]\)/-march=i686/g}' build.ninja
 fi
 rm -f main.c a.out
 
