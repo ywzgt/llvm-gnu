@@ -47,9 +47,10 @@ for i in cmake third-party libunwind
 do
     ln -s $i{-${VERSION}.src,}
 done
+
+cd llvm-${VERSION}.src
 mv ../clang-${VERSION}.src tools/clang
 mv ../lld-${VERSION}.src tools/lld
-
 grep -rl '#!.*python' | xargs sed -i '1s/python$/python3/'
 
 if [[ $ELIBC != musl ]]; then
@@ -60,14 +61,14 @@ fi
 
 src_config() {
 	local _flags=(
-	 -DCLANG_DEFAULT_LINKER=lld
-	 -DCLANG_DEFAULT_OPENMP_RUNTIME=libgomp
-	 -DCLANG_DEFAULT_OBJCOPY=llvm-objcopy
+		-DCLANG_DEFAULT_LINKER=lld
+		-DCLANG_DEFAULT_OPENMP_RUNTIME=libgomp
+		-DCLANG_DEFAULT_OBJCOPY=llvm-objcopy
 	)
 
 	if command -v clang{,++} > /dev/null; then
 		CC=clang CXX=clang++ "$@" \
-        -DLLVM_USE_LINKER=lld "${_flags[@]}"
+		-DLLVM_USE_LINKER=lld "${_flags[@]}"
 	else
 		CC=gcc CXX=g++ "$@" \
 		-DLLVM_USE_LINKER=gold
@@ -89,8 +90,7 @@ cmake -DCMAKE_INSTALL_PREFIX=/usr           \
       -DLLVM_INCLUDE_TESTS=OFF \
       -DLLVM_HOST_TRIPLE=$(gcc -dumpmachine) \
       -DCLANG_CONFIG_FILE_SYSTEM_DIR=/usr/lib/clang \
-      -Wno-dev -G Ninja "${_args[@]}" \
-      -B build -S llvm-${VERSION}.src
+      -Wno-dev -G Ninja "${_args[@]}" -B build
 
 ninja -C build
 ninja -C build install
@@ -106,5 +106,5 @@ EOF
 ln -s clang.cfg "$PKG/usr/lib/clang/clang++.cfg"
 cp $PKG/usr/lib/clang/*.cfg "/usr/lib/clang/"
 
-echo "$VERSION" > $PWD/../../VERSION
+echo "$VERSION" > $PKG/../VERSION
 clang -v
