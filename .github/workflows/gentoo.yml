@@ -44,7 +44,7 @@ jobs:
       uses: softprops/action-gh-release@master
       with:
         tag_name: ${{ env.TAG_VERSION }}
-        files: *.tar.xz
+        files: gentoo-*.tar.xz
         fail_on_unmatched_files: true
 
     - name: Gh login
