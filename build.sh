@@ -76,7 +76,7 @@ cmake -DCMAKE_INSTALL_PREFIX=/usr           \
       -DLLVM_HOST_TRIPLE=$(gcc -dumpmachine) \
       -DCLANG_DEFAULT_OPENMP_RUNTIME=libgomp \
       -DCLANG_CONFIG_FILE_SYSTEM_DIR=/usr/lib/clang \
-      -Wno-dev -G Ninja "${_args[@]}" -B build
+      -Wno-dev -G Ninja "${_args[@]}" -B build -S tools/clang
 
 ninja -C build
 ninja -C build install
