@@ -43,12 +43,13 @@ do
     ln -s $i{-${VERSION}.src,}
 done
 
-cd llvm-${VERSION}.src
-mv ../clang-${VERSION}.src tools/clang
+cd clang-${VERSION}.src
+#mv ../clang-${VERSION}.src tools/clang
 grep -rl '#!.*python' | xargs sed -i '1s/python$/python3/'
 
 if [[ $ELIBC = gnu ]]; then
-	patch -Np2 -d tools/clang <../clang-17-enable_default_ssp-1.patch
+	#patch -Np2 -d tools/clang <../clang-17-enable_default_ssp-1.patch
+	echo
 fi
 
 src_config() {
@@ -76,7 +77,7 @@ cmake -DCMAKE_INSTALL_PREFIX=/usr           \
       -DLLVM_HOST_TRIPLE=$(gcc -dumpmachine) \
       -DCLANG_DEFAULT_OPENMP_RUNTIME=libgomp \
       -DCLANG_CONFIG_FILE_SYSTEM_DIR=/usr/lib/clang \
-      -Wno-dev -G Ninja "${_args[@]}" -B build -S tools/clang
+      -Wno-dev -G Ninja "${_args[@]}" -B build
 
 ninja -C build
 ninja -C build install
