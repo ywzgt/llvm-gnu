@@ -1,4 +1,4 @@
-name: gentoo x32
+name: gentoo x32 update
 on:
   workflow_dispatch:
 
@@ -12,11 +12,9 @@ jobs:
 
     - name: Preparing rootfs
       run: |
-        base_url="https://distfiles.gentoo.org/releases/amd64/autobuilds/current-stage3-x32-systemd-mergedusr"
-        wget -nv $base_url/latest-stage3-x32-systemd-mergedusr.txt -O latest.txt
-        file_name="$(grep -o '^stage3-x32.*xz' latest.txt)"
-        wget -nv $base_url/$file_name{,.sha256}
-        sha256sum -c $file_name.sha256
+        base_url="https://github.com/$GITHUB_REPOSITORY"
+        file_name="gentoo-x32.tar.xz"
+        wget -nv $base_url/$file_name
         sudo mkdir -v rootfs
         echo " -> Extracting the '$file_name'..."
         sudo tar xpf $file_name -C rootfs
@@ -36,7 +34,7 @@ jobs:
     - name: Rsync gentoo repo
       run: sudo chroot rootfs /usr/bin/env -i HOME=/root TERM=$TERM PATH=/usr/bin:/usr/sbin /bin/bash --login -c emerge-webrsync
     - name: Run emerge to install packages
-      run: sudo chroot rootfs /usr/bin/env -i HOME=/root TERM=$TERM PATH=/usr/bin:/usr/sbin /bin/bash --login -c "emerge -v lld"
+      run: sudo chroot rootfs /usr/bin/env -i HOME=/root TERM=$TERM PATH=/usr/bin:/usr/sbin /bin/bash --login -c "emerge -v clang"
     - name: Package
       run: (cd rootfs; sudo tar cf - --exclude=./dev/* --exclude=./proc/* --exclude=./sys/* --exclude=./run/* --exclude=./tmp/* --exclude=./var/db/repos/* --exclude=./var/cache/* .|xz -T0) > gentoo-x32.tar.xz; echo "TAG_VERSION=$(TZ=GMT-8 date +%Y%m%d.%H)" >> $GITHUB_ENV
 
