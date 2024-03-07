@@ -83,7 +83,7 @@ ninja -C build install
 rm -rf $PKG
 DESTDIR=$PKG ninja -C build install &> /dev/null
 
-mkdir -p {$PKG,}/clang
+mkdir -p {$PKG,}/etc/clang
 # https://packages.gentoo.org/packages/sys-devel/clang-common
 cat > $PKG/etc/clang/clang.cfg <<-EOF
 	# It is used to control the default runtimes using by clang.
