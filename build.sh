@@ -13,7 +13,7 @@ SRC=(
 	${URL}/releases/download/llvmorg-${VERSION}/cmake-${VERSION}.src.tar.xz
 	${URL}/releases/download/llvmorg-${VERSION}/third-party-${VERSION}.src.tar.xz
 	${URL}/releases/download/llvmorg-${VERSION}/clang-${VERSION}.src.tar.xz
-	https://www.linuxfromscratch.org/patches/blfs/svn/clang-17-enable_default_ssp-1.patch
+	https://www.linuxfromscratch.org/patches/downloads/clang/clang-17-enable_default_ssp-1.patch
 )
 
 for arg in $@; do
