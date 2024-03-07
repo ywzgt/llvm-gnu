@@ -1,7 +1,7 @@
 #!/bin/bash
 
 set -e
-source envars.sh
+#source envars.sh
 
 ELIBC=gnu
 VERSION=17.0.6
@@ -71,12 +71,12 @@ cmake -DCMAKE_INSTALL_PREFIX=/usr           \
       -DLLVM_BINUTILS_INCDIR=/usr/include   \
       -DLLVM_INCLUDE_BENCHMARKS=OFF         \
       -DCLANG_DEFAULT_PIE_ON_LINUX=ON       \
-      -DLLVM_USE_LINKER=bfd \
+      -DLLVM_USE_LINKER=gold \
       -DLLVM_BUILD_TESTS=OFF \
       -DLLVM_INCLUDE_TESTS=OFF \
       -DLLVM_HOST_TRIPLE=$(gcc -dumpmachine) \
       -DCLANG_DEFAULT_OPENMP_RUNTIME=libgomp \
-      -DCLANG_CONFIG_FILE_SYSTEM_DIR=/usr/lib/clang \
+      -DCLANG_CONFIG_FILE_SYSTEM_DIR=/etc/clang \
       -Wno-dev -G Ninja "${_args[@]}" -B build
 
 ninja -C build
@@ -84,15 +84,16 @@ ninja -C build install
 rm -rf $PKG
 DESTDIR=$PKG ninja -C build install &> /dev/null
 
+mkdir -p {$PKG,}/clang
 # https://packages.gentoo.org/packages/sys-devel/clang-common
-cat > $PKG/usr/lib/clang/clang.cfg <<-EOF
+cat > $PKG/etc/clang/clang.cfg <<-EOF
 	# It is used to control the default runtimes using by clang.
  
 	-fuse-ld=gold
 EOF
 
-ln -s clang.cfg "$PKG/usr/lib/clang/clang++.cfg"
-cp $PKG/usr/lib/clang/*.cfg "/usr/lib/clang/"
+ln -s clang.cfg "$PKG/etc/clang/clang++.cfg"
+cp $PKG/etc/clang/*.cfg "/etc/clang/"
 
 echo "$VERSION" > $PKG/../VERSION
 clang -v
