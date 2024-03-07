@@ -71,7 +71,6 @@ cmake -DCMAKE_INSTALL_PREFIX=/usr           \
       -DLLVM_BINUTILS_INCDIR=/usr/include   \
       -DLLVM_INCLUDE_BENCHMARKS=OFF         \
       -DCLANG_DEFAULT_PIE_ON_LINUX=ON       \
-      -DLLVM_USE_LINKER=gold \
       -DLLVM_BUILD_TESTS=OFF \
       -DLLVM_INCLUDE_TESTS=OFF \
       -DLLVM_HOST_TRIPLE=$(gcc -dumpmachine) \
