@@ -112,7 +112,7 @@ if [[ $ELIBC = musl ]]; then
 		_args+=(-DCOMPILER_RT_BUILD_SANITIZERS=OFF)
 	fi
 elif [[ $ELIBC = uclibc ]]; then
-	_args+=(-DCOMPILER_RT_BUILD_SANITIZERS=OFF)
+	_args+=(-DCOMPILER_RT_BUILD_{SANITIZERS,LIBFUZZER,MEMPROF,ORC,PROFILE,XRAY}=OFF)
 fi
 
 mkdir -v build
