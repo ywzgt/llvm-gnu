@@ -32,6 +32,8 @@ jobs:
         sudo install -do $(id -u) -g $(id -g) rootfs/build
         cp *.sh rootfs/build
 
+    - name: C
+      run: sudo chroot rootfs /usr/bin/env -i HOME=/root TERM=$TERM PATH=/usr/bin:/usr/sbin /bin/bash --login -c "cd /build; bash uclibc.sh"
     - name: CMAKE
       run: sudo chroot rootfs /usr/bin/env -i HOME=/root TERM=$TERM PATH=/usr/bin:/usr/sbin /bin/bash --login -c "cd /build; bash cmake.sh"
     - name: Run script to build llvm
@@ -46,7 +48,7 @@ jobs:
       if: ${{ env.TAG_VERSION != '' }}
       uses: softprops/action-gh-release@master
       with:
-        tag_name: ${{ env.TAG_VERSION }}
+        tag_name: ${{ env.TAG_VERSION }}-san
         files: llvm-*.tar.xz
         fail_on_unmatched_files: true
 
