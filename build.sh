@@ -27,8 +27,8 @@ for arg in $@; do
 		musl)
 			ELIBC=musl
 			;;
-		nolibcxx)
-			STDLIB=
+		nolibcxx|stdc++)
+			STDLIB=libstdc++
 			;;
 	esac
 done
@@ -113,21 +113,30 @@ mkdir -v build
 cd build
 
 src_config() {
+	local _flags=(
+	   -DLLVM_ENABLE_LLD=ON
+	   -DCLANG_DEFAULT_LINKER=lld
+	   -DCLANG_DEFAULT_RTLIB=compiler-rt
+	   -DCLANG_DEFAULT_UNWINDLIB=libunwind
+	   -DCLANG_DEFAULT_OBJCOPY=llvm-objcopy
+	)
+
 	if [[ $STDLIB = libcxx ]]; then
-		local _flags=(
-		 -DLIBCXX{,ABI}_USE_COMPILER_RT=ON
-		 -DSANITIZER_CXX_ABI=libcxxabi
-		 -DCLANG_DEFAULT_LINKER=lld
-		 -DCLANG_DEFAULT_CXX_STDLIB=libc++
-		 -DCLANG_DEFAULT_RTLIB=compiler-rt
-		 -DCLANG_DEFAULT_UNWINDLIB=libunwind
-		 -DCLANG_DEFAULT_OBJCOPY=llvm-objcopy
+		_flags+=(
+		  -DLIBCXX{,ABI}_USE_COMPILER_RT=ON
+		  -DLIBCXX_HAS_ATOMIC_LIB=OFF
+		  -DSANITIZER_CXX_ABI=libcxxabi
+		  -DCLANG_DEFAULT_CXX_STDLIB=libc++
+		)
+	else
+		_flags+=(
+		   -DCLANG_DEFAULT_CXX_STDLIB=libstdc++
+		   -DCLANG_DEFAULT_OPENMP_RUNTIME=libgomp
 		)
 	fi
 
 	if command -v clang{,++} > /dev/null; then
 		CC=clang CXX=clang++ "$@" \
-		-DLIBCXX_HAS_ATOMIC_LIB=OFF \
 		-DLIBUNWIND_USE_COMPILER_RT=ON \
 		-DCOMPILER_RT_USE_BUILTINS_LIBRARY=ON \
 		"${_flags[@]}"
@@ -182,6 +191,7 @@ EOF
 if [[ $STDLIB != libcxx ]]; then
 	sed -i '/--stdlib=libc++$/d' $PKG/usr/lib/clang/clang.cfg
 fi
+
 if [[ $ELIBC = musl ]]; then
 	sed -i '/-fstack-protector-strong$/d' $PKG/usr/lib/clang/clang.cfg
 fi
