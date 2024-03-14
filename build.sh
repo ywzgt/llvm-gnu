@@ -30,6 +30,10 @@ for arg in $@; do
 		nolibcxx|stdc++)
 			STDLIB=libstdc++
 			;;
+		uclibc)
+			ELIBC=uclibc
+			STDLIB=libstdc++
+			;;
 	esac
 done
 
@@ -107,6 +111,8 @@ if [[ $ELIBC = musl ]]; then
 		sed -i 's,#ssp,,' projects/libcxx/CMakeLists.txt
 		_args+=(-DCOMPILER_RT_BUILD_SANITIZERS=OFF)
 	fi
+elif [[ $ELIBC = uclibc ]]; then
+	_args+=(-DCOMPILER_RT_BUILD_SANITIZERS=OFF)
 fi
 
 mkdir -v build
@@ -191,7 +197,6 @@ EOF
 if [[ $STDLIB != libcxx ]]; then
 	sed -i '/--stdlib=libc++$/d' $PKG/usr/lib/clang/clang.cfg
 fi
-
 if [[ $ELIBC = musl ]]; then
 	sed -i '/-fstack-protector-strong$/d' $PKG/usr/lib/clang/clang.cfg
 fi
