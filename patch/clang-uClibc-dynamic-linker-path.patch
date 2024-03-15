@@ -9,7 +9,7 @@
    std::string Loader;
 
    switch (Arch) {
-@@ -610,6 +610,26 @@
+@@ -610,6 +610,28 @@
         Triple.getVendor() == llvm::Triple::PC))
      return "/usr/" + Triple.str() + "/lib/" + Loader;
    return "/" + LibDir + "/" + Loader;
@@ -30,6 +30,8 @@
 +    LoaderSuffix = X32 ? "x32" : "64";
 +    break;
 +  }
++  default:
++    break;
 +
 +  return "/lib/ld" + LoaderSuffix + "-uClibc.so.1";
 +  }
