@@ -112,8 +112,11 @@ if [[ $ELIBC = musl ]]; then
 		_args+=(-DCOMPILER_RT_BUILD_SANITIZERS=OFF)
 	fi
 elif [[ $ELIBC = uclibc ]]; then
-	true
-	#_args+=(-DCOMPILER_RT_BUILD_{SANITIZERS,LIBFUZZER,MEMPROF,ORC,PROFILE,XRAY}=OFF)
+	patch -Np1 -d tools/clang < ../clang-uClibc-dynamic-linker-path.patch
+	_args+=(
+		 -DCOMPILER_RT_BUILD_{SANITIZERS,LIBFUZZER}=OFF
+		 -DCOMPILER_RT_BUILD_{MEMPROF,ORC,PROFILE,XRAY}=OFF
+		)
 fi
 
 mkdir -v build
@@ -177,7 +180,7 @@ echo 'int main(){}' > main.c
 if gcc -m32 main.c 2> /dev/null; then
 	sed -i '/-m32 /s/-march=x86-64\(\|-v[2-4]\)/-march=i686/g' build.ninja
 fi
-rm -f main.c a.out
+rm -f a.out
 
 ninja
 ninja install
@@ -205,8 +208,9 @@ fi
 ln -s clang.cfg "$PKG/usr/lib/clang/clang++.cfg"
 cp $PKG/usr/lib/clang/*.cfg "/usr/lib/clang/"
 
-echo "$VERSION" > $PWD/../../VERSION
-clang -v
+echo "$VERSION" > $PKG/../VERSION
+clang -v main.c -o binary.a
+readelf -l binary.a | grep '/lib'
 
 for d in {$PKG,}/; do
 	cxxdir="${d}usr/include/$(gcc -dumpmachine)/c++/v1"

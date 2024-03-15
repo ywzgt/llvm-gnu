@@ -1,0 +1,50 @@
+--- a/lib/Driver/ToolChains/Linux.cpp
++++ b/lib/Driver/ToolChains/Linux.cpp
+@@ -476,7 +476,7 @@
+     return "/lib/ld-musl-" + ArchName + ".so.1";
+   }
+
+-  std::string LibDir;
++/*std::string LibDir;
+   std::string Loader;
+
+   switch (Arch) {
+@@ -603,7 +603,38 @@
+     Loader = "ld.so.1";
+     break;
+   }
++  } */
++
++  std::string LoaderSuffix;
++  switch (Arch) {
++  default:
++    llvm_unreachable("unsupported architecture");
++
++  case llvm::Triple::mips64:
++    LoaderSuffix = "64";
++    break;
++  case llvm::Triple::ppc64:
++    LoaderSuffix = "64";
++    break;
++  case llvm::Triple::ppc64le:
++    LoaderSuffix = "64";
++    break;
++  case llvm::Triple::sparc64:
++    LoaderSuffix = "64";
++    break;
++  case llvm::Triple::x86_64:
++    LoaderSuffix = "64";
++    break;
++  case llvm::Triple::x86_64: {
++    bool X32 = Triple.isX32();
++
++    LoaderSuffix = X32 ? "x32" : "64";
++    break;
+   }
++  }
++
++  return "/lib/ld" + LoaderSuffix + "-uClibc.so.1";
++}
+
+   if (Distro == Distro::Exherbo &&
+       (Triple.getVendor() == llvm::Triple::UnknownVendor ||
