@@ -124,12 +124,11 @@ cd build
 
 src_config() {
 	local _flags=(
-	   -DLLVM_ENABLE_LLD=ON
-	   -DCLANG_DEFAULT_LINKER=lld
 	   -DCLANG_DEFAULT_RTLIB=compiler-rt
 	   -DCLANG_DEFAULT_UNWINDLIB=libunwind
 	   -DCLANG_DEFAULT_OBJCOPY=llvm-objcopy
 	)
+	[[ $ELIBC = uclibc ]] || _flags+=(-DLLVM_ENABLE_LLD=ON -DCLANG_DEFAULT_LINKER=lld)
 
 	if [[ $STDLIB = libcxx ]]; then
 		_flags+=(
@@ -201,8 +200,9 @@ EOF
 if [[ $STDLIB != libcxx ]]; then
 	sed -i '/--stdlib=libc++$/d' $PKG/usr/lib/clang/clang.cfg
 fi
-if [[ $ELIBC = musl ]]; then
-	sed -i '/-fstack-protector-strong$/d' $PKG/usr/lib/clang/clang.cfg
+
+if [[ $ELIBC = uclibc ]]; then
+	sed -i '/-fuse-ld=lld$/d' $PKG/usr/lib/clang/clang.cfg
 fi
 
 ln -s clang.cfg "$PKG/usr/lib/clang/clang++.cfg"
