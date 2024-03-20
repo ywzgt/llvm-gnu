@@ -46,7 +46,12 @@ remove_rpath() {
 	if ! command -v chrpath > /dev/null; then
 		local PV=0.16
 		local SRC="chrpath_$PV.orig.tar.gz"
-		wget -nv "https://deb.debian.org/debian/pool/main/c/chrpath/$SRC"
+		local URL="https://deb.debian.org/debian/pool/main/c/chrpath"
+		if ! wget -q "$URL/$SRC"
+		then
+			SRC="$(curl -sL $URL|sed -n 's/.*\(chrpath_.*.orig.tar.gz\).*/\1/p'|head -1)"
+			wget -nv "$URL/$SRC"; PV=$(echo ${SRC%.orig.*}|sed 's/.*_//')
+		fi
 		tar xf $SRC; cd chrpath-${PV}
 		CC=clang ./configure --prefix=/usr; make -j$(nproc) && make install
 	fi

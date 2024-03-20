@@ -1,11 +1,11 @@
-# curl -s https://linuxfromscratch.org/blfs/view/systemd/general/llvm.html | grep -o 'https://.*.\(xz\|patch\)' | uniq
+#!/bin/bash
 
 set -e
 source envars.sh
 
 ELIBC=gnu
 STDLIB=libcxx
-VERSION=18.1.1
+VERSION=17.0.6
 PKG="$PWD/DEST"
 URL="https://github.com/llvm/llvm-project"
 
@@ -100,27 +100,10 @@ fi
 
 grep -rl '#!.*python' | xargs sed -i '1s/python$/python3/'
 
-if [[ $ELIBC = musl ]]; then
-	_args+=(-DCOMPILER_RT_BUILD_GWP_ASAN=OFF)
-	[ "$STDLIB" = libcxx ] && _args+=(-DLIBCXX_HAS_MUSL_LIBC=ON)
-	if [[ $(gcc -dumpmachine) = i?86-*-musl ]]; then
-		sed -i 's,^# Setup flags.$,add_library_flags(ssp_nonshared),' \
-			projects/libunwind/src/CMakeLists.txt
-		sed -i 's,^# Setup flags.$,add_library_flags(ssp_nonshared),' \
-			projects/libcxxabi/src/CMakeLists.txt
-		sed -i 's,#ssp,,' projects/libcxx/CMakeLists.txt
-		_args+=(-DCOMPILER_RT_BUILD_SANITIZERS=OFF)
-	fi
-elif [[ $ELIBC = uclibc ]]; then
-	patch -Np1 -d tools/clang < ../clang-uClibc-dynamic-linker-path.patch
-	_args+=(
-		 -DCOMPILER_RT_BUILD_{SANITIZERS,LIBFUZZER}=OFF
-		 -DCOMPILER_RT_BUILD_{MEMPROF,ORC,PROFILE,XRAY}=OFF
-		)
-fi
-
-mkdir -v build
-cd build
+NOSANITIZERS_ARGS=(
+	-DCOMPILER_RT_BUILD_{SANITIZERS,LIBFUZZER}=OFF
+	-DCOMPILER_RT_BUILD_{MEMPROF,ORC,PROFILE,XRAY}=OFF
+)
 
 src_config() {
 	local _flags=(
@@ -128,6 +111,7 @@ src_config() {
 	   -DCLANG_DEFAULT_UNWINDLIB=libunwind
 	   -DCLANG_DEFAULT_OBJCOPY=llvm-objcopy
 	)
+
 	[[ $ELIBC = uclibc ]] || _flags+=(-DLLVM_ENABLE_LLD=ON -DCLANG_DEFAULT_LINKER=lld)
 
 	if [[ $STDLIB = libcxx ]]; then
@@ -145,6 +129,7 @@ src_config() {
 	fi
 
 	if command -v clang{,++} > /dev/null; then
+		[[ $STDLIB != libcxx ]] || CXXFLAGS="${CXXFLAGS/_GLIBCXX_ASSERTIONS/_LIBCPP_HARDENING_MODE=_LIBCPP_HARDENING_MODE_EXTENSIVE}"
 		CC=clang CXX=clang++ "$@" \
 		-DLIBUNWIND_USE_COMPILER_RT=ON \
 		-DCOMPILER_RT_USE_BUILTINS_LIBRARY=ON \
@@ -152,9 +137,24 @@ src_config() {
 	else
 		CC=gcc CXX=g++ "$@" \
 		-DLLVM_USE_LINKER=gold
-		sed -i '/C_SHARED_LIBRARY_LINKER__unwind/{n;{n;/LINK_FLAGS/s/\s\+-nostdlib++//}}' build.ninja
 	fi
 }
+
+if [[ $ELIBC = musl ]]; then
+	_args+=(-DCOMPILER_RT_BUILD_GWP_ASAN=OFF)
+	[[ $STDLIB != libcxx ]] || _args+=(-DLIBCXX_HAS_MUSL_LIBC=ON)
+	[[ $(gcc -dumpmachine) != i?86-*-musl ]] || _args+=(${NOSANITIZERS_ARGS[@]})
+elif [[ $ELIBC = uclibc ]]; then
+	patch -Np1 -d tools/clang < ../clang-uClibc-dynamic-linker-path.patch
+	_args+=(${NOSANITIZERS_ARGS[@]})
+fi
+
+if [[ $(gcc -dumpmachine) = i?86-* ]]; then
+	_args+=(-DCOMPILER_RT_INSTALL_PATH="/usr/lib/clang/${VERSION%%.*}")
+fi
+
+mkdir -v build
+cd build
 
 src_config \
 cmake -DCMAKE_INSTALL_PREFIX=/usr           \
@@ -166,7 +166,6 @@ cmake -DCMAKE_INSTALL_PREFIX=/usr           \
       -DLLVM_TARGETS_TO_BUILD="host;AMDGPU" \
       -DLLVM_BINUTILS_INCDIR=/usr/include   \
       -DLLVM_INCLUDE_BENCHMARKS=OFF         \
-      -DLLVM_VERSION_SUFFIX=                \
       -DCLANG_DEFAULT_PIE_ON_LINUX=ON       \
       -DLLVM_BUILD_TESTS=OFF \
       -DLLVM_INCLUDE_TESTS=OFF \
@@ -202,15 +201,16 @@ if [[ $STDLIB != libcxx ]]; then
 fi
 
 if [[ $ELIBC = uclibc ]]; then
-	sed -i '/-fuse-ld=lld$/d' $PKG/usr/lib/clang/clang.cfg
+	sed -i '/-fuse-ld=lld/d' $PKG/usr/lib/clang/clang.cfg
 fi
 
 ln -s clang.cfg "$PKG/usr/lib/clang/clang++.cfg"
-cp $PKG/usr/lib/clang/*.cfg "/usr/lib/clang/"
+cp -d $PKG/usr/lib/clang/*.cfg "/usr/lib/clang/"
 
 echo "$VERSION" > $PKG/../VERSION
-clang -v main.c -o binary.a
-readelf -l binary.a | grep '/lib'
+clang -v main.c
+readelf -ln a.out | grep '/lib'
+./a.out
 
 for d in {$PKG,}/; do
 	cxxdir="${d}usr/include/$(gcc -dumpmachine)/c++/v1"

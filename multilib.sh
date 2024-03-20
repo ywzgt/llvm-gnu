@@ -3,7 +3,7 @@
 set -e
 source envars.sh
 
-VERSION=18.1.1
+VERSION=17.0.6
 PKG="$PWD/DEST"
 SRC=(
 	cmake
@@ -36,8 +36,9 @@ pre_src() {
 
 	ln -s /bin/clang i386-pc-linux-gnu-clang
 	ln -s /bin/clang++ i386-pc-linux-gnu-clang++
-	CFLAGS="${CFLAGS/x86-64-v3/i686}"
-	CXXFLAGS="${CXXFLAGS/x86-64-v3/i686}"
+	CFLAGS="${CFLAGS/x86-64-v?/i686}"
+	CXXFLAGS="${CXXFLAGS/x86-64-v?/i686}"
+	CXXFLAGS="${CXXFLAGS/_GLIBCXX_ASSERTIONS/_LIBCPP_HARDENING_MODE=_LIBCPP_HARDENING_MODE_EXTENSIVE}"
 }
 
 rt_args=(
@@ -55,7 +56,6 @@ stage1() {
 	-DCMAKE_INSTALL_PREFIX=/usr \
 	-DCMAKE_BUILD_TYPE=Release -GNinja \
 	-DLLVM_ENABLE_RUNTIMES="libunwind;libcxx;libcxxabi"
-	sed -i '/C_SHARED_LIBRARY_LINKER__unwind/{n;{n;/LINK_FLAGS/s/\s\+-nostdlib++//}}' build/build.ninja
 	DESTDIR=$PWD/pkg ninja install -C build; cp -a pkg/usr/lib/* /usr/lib32/
 
 	rm -rf build pkg
