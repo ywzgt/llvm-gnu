@@ -119,9 +119,9 @@ src_config() {
 		_flags+=(
 		  -DLIBCXX{,ABI}_USE_COMPILER_RT=ON
 		  -DLIBCXX_HAS_ATOMIC_LIB=OFF
+		  -DLIBCXX_ENABLE_ASSERTIONS=ON
 		  -DSANITIZER_CXX_ABI=libcxxabi
 		  -DCLANG_DEFAULT_CXX_STDLIB=libc++
-		  -DLIBCXX_HARDENING_MODE=extensive  # https://libcxx.llvm.org/Hardening.html
 		)
 	else
 		_flags+=(

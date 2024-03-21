@@ -155,8 +155,10 @@ jobs:
     - name: CMAKE
       run: sudo chroot rootfs /usr/bin/env -i HOME=/root TERM=$TERM PATH=/usr/bin:/usr/sbin /bin/bash --login -c "cd /build; bash cmake.sh"
     - name: Run script to build llvm
+      shell: linux32 bash -e {0}
       run: sudo chroot rootfs /usr/bin/env -i HOME=/root TERM=$TERM PATH=/usr/bin:/usr/sbin /bin/bash --login -c "cd /build; bash build.sh uclibc"
     - name: Run script to build llvm pass2
+      shell: linux32 bash -e {0}
       run: sudo chroot rootfs /usr/bin/env -i HOME=/root TERM=$TERM PATH=/usr/bin:/usr/sbin /bin/bash --login -c "cd /build; bash build.sh uclibc"
     - name: Run script to strip
       run: sudo chroot rootfs /usr/bin/env -i HOME=/root TERM=$TERM PATH=/usr/bin:/usr/sbin /bin/bash --login -c "cd /build; bash -e strip.sh DEST"
