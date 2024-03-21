@@ -7,6 +7,7 @@ ELIBC=gnu
 STDLIB=libcxx
 VERSION=17.0.6
 PKG="$PWD/DEST"
+TRIPLE="$(gcc -dumpmachine)"
 URL="https://github.com/llvm/llvm-project"
 
 SRC=(
@@ -120,6 +121,7 @@ src_config() {
 		  -DLIBCXX_HAS_ATOMIC_LIB=OFF
 		  -DSANITIZER_CXX_ABI=libcxxabi
 		  -DCLANG_DEFAULT_CXX_STDLIB=libc++
+		  -DLIBCXX_HARDENING_MODE=extensive  # https://libcxx.llvm.org/Hardening.html
 		)
 	else
 		_flags+=(
@@ -129,7 +131,6 @@ src_config() {
 	fi
 
 	if command -v clang{,++} > /dev/null; then
-		[[ $STDLIB != libcxx ]] || CXXFLAGS="${CXXFLAGS/_GLIBCXX_ASSERTIONS/_LIBCPP_HARDENING_MODE=_LIBCPP_HARDENING_MODE_EXTENSIVE}"
 		CC=clang CXX=clang++ "$@" \
 		-DLIBUNWIND_USE_COMPILER_RT=ON \
 		-DCOMPILER_RT_USE_BUILTINS_LIBRARY=ON \
@@ -143,14 +144,10 @@ src_config() {
 if [[ $ELIBC = musl ]]; then
 	_args+=(-DCOMPILER_RT_BUILD_GWP_ASAN=OFF)
 	[[ $STDLIB != libcxx ]] || _args+=(-DLIBCXX_HAS_MUSL_LIBC=ON)
-	[[ $(gcc -dumpmachine) != i?86-*-musl ]] || _args+=(${NOSANITIZERS_ARGS[@]})
+	[[ $TRIPLE != i?86-*-musl ]] || _args+=(${NOSANITIZERS_ARGS[@]})
 elif [[ $ELIBC = uclibc ]]; then
 	patch -Np1 -d tools/clang < ../clang-uClibc-dynamic-linker-path.patch
 	_args+=(${NOSANITIZERS_ARGS[@]})
-fi
-
-if [[ $(gcc -dumpmachine) = i?86-* ]]; then
-	_args+=(-DCOMPILER_RT_INSTALL_PATH="/usr/lib/clang/${VERSION%%.*}")
 fi
 
 mkdir -v build
@@ -169,7 +166,7 @@ cmake -DCMAKE_INSTALL_PREFIX=/usr           \
       -DCLANG_DEFAULT_PIE_ON_LINUX=ON       \
       -DLLVM_BUILD_TESTS=OFF \
       -DLLVM_INCLUDE_TESTS=OFF \
-      -DLLVM_HOST_TRIPLE=$(gcc -dumpmachine) \
+      -DLLVM_HOST_TRIPLE=$TRIPLE \
       -DCLANG_CONFIG_FILE_SYSTEM_DIR=/usr/lib/clang \
       -DLIBUNWIND_INSTALL_LIBRARY_DIR:PATH=lib \
       -Wno-dev -G Ninja "${_args[@]}" ..
@@ -184,6 +181,14 @@ ninja
 ninja install
 rm -rf $PKG
 DESTDIR=$PKG ninja install &> /dev/null
+
+if [[ $TRIPLE = i?86-* && $TRIPLE != i386-* ]]; then
+	rt_lib="$PKG/usr/lib/clang/${VERSION%%.*}/lib"
+	if [ -d "$rt_lib/${TRIPLE/i?86/i386}" ]; then
+		mv $rt_lib/{${TRIPLE/i?86/i386},$TRIPLE}
+		mv ${rt_lib#$PKG}/{${TRIPLE/i?86/i386},$TRIPLE}
+	fi
+fi
 
 # https://packages.gentoo.org/packages/sys-devel/clang-common
 cat > $PKG/usr/lib/clang/clang.cfg <<-EOF
@@ -213,7 +218,7 @@ readelf -ln a.out | grep '/lib'
 ./a.out
 
 for d in {$PKG,}/; do
-	cxxdir="${d}usr/include/$(gcc -dumpmachine)/c++/v1"
+	cxxdir="${d}usr/include/$TRIPLE/c++/v1"
 	[ -f "$cxxdir/__config_site" ] || continue
 	mv $cxxdir/{*,../../../c++/v1}
 	rmdir -p $cxxdir --ignore-fail-on-non-empty

@@ -38,7 +38,6 @@ pre_src() {
 	ln -s /bin/clang++ i386-pc-linux-gnu-clang++
 	CFLAGS="${CFLAGS/x86-64-v?/i686}"
 	CXXFLAGS="${CXXFLAGS/x86-64-v?/i686}"
-	CXXFLAGS="${CXXFLAGS/_GLIBCXX_ASSERTIONS/_LIBCPP_HARDENING_MODE=_LIBCPP_HARDENING_MODE_EXTENSIVE}"
 }
 
 rt_args=(
