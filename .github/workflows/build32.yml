@@ -48,7 +48,7 @@ jobs:
       if: ${{ env.TAG_VERSION != '' }}
       uses: softprops/action-gh-release@master
       with:
-        tag_name: ${{ env.TAG_VERSION }}-1
+        tag_name: ${{ env.TAG_VERSION }}-0
         files: llvm-*.tar.xz
         fail_on_unmatched_files: true
         prerelease: true
@@ -108,7 +108,7 @@ jobs:
       if: ${{ env.TAG_VERSION != '' }}
       uses: softprops/action-gh-release@master
       with:
-        tag_name: ${{ env.TAG_VERSION }}-1
+        tag_name: ${{ env.TAG_VERSION }}-0
         files: llvm-*.tar.xz
         fail_on_unmatched_files: true
         prerelease: true
