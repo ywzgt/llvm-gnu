@@ -35,6 +35,9 @@ for arg in $@; do
 			ELIBC=uclibc
 			STDLIB=libstdc++
 			;;
+		cross32)
+			CROSS_X86=1
+			;;
 	esac
 done
 
@@ -52,17 +55,16 @@ for i in ${SRC[@]}; do
 	f=$(basename $i)
 	if [[ $f = *.src.tar.xz && ! -d ${f%.tar.xz} ]]; then
 		echo "Extracting $f..."
-		tar xf $f &
+		tar xf $f
 	fi
 done
 
 cd llvm-${VERSION}.src
-sed '/LLVM_COMMON_CMAKE_UTILS/s@../cmake@LLVM-cmake.src@'          \
-    -i CMakeLists.txt
-sed '/LLVM_THIRD_PARTY_DIR/s@../third-party@LLVM-third-party.src@' \
-    -i cmake/modules/HandleLLVMOptions.cmake
 
-while pidof -q tar; do sleep 0.1; done
+sed '/LLVM_COMMON_CMAKE_UTILS/s@../cmake@LLVM-cmake.src@' \
+	-i CMakeLists.txt
+sed '/LLVM_THIRD_PARTY_DIR/s@../third-party@LLVM-third-party.src@' \
+	-i cmake/modules/HandleLLVMOptions.cmake
 mv ../cmake-${VERSION}.src LLVM-cmake.src
 mv ../third-party-${VERSION}.src LLVM-third-party.src
 mv ../clang-${VERSION}.src tools/clang
@@ -88,7 +90,6 @@ if [[ $STDLIB = libcxx ]]; then
 	sed 's@../runtimes@LLVM-runtimes.src@' -i \
 		projects/compiler-rt/cmake/Modules/AddCompilerRT.cmake \
 		projects/compiler-rt/lib/sanitizer_common/symbolizer/scripts/build_symbolizer.sh
-	sed -i '/LIBCXXABI_USE_LLVM_UNWINDER AND/s/ NOT//' projects/libcxxabi/CMakeLists.txt
 	_args=(-DLIBCXX{,ABI}_INSTALL_LIBRARY_DIR=lib)
 else
 	for M in {HandleFlags,WarningFlags}.cmake; do
@@ -99,7 +100,11 @@ else
 	done
 fi
 
+
+patch -Np1 -i ../llvm-uClibc-triple.patch
+patch -Np1 -d tools/clang < ../clang-uClibc-dynamic-linker-path.patch
 grep -rl '#!.*python' | xargs sed -i '1s/python$/python3/'
+
 
 NOSANITIZERS_ARGS=(
 	-DCOMPILER_RT_BUILD_{SANITIZERS,LIBFUZZER}=OFF
@@ -107,6 +112,10 @@ NOSANITIZERS_ARGS=(
 )
 
 src_config() {
+	if [[ $CROSS_X86 ]]; then
+		$@; return $?
+	fi
+
 	local _flags=(
 	   -DCLANG_DEFAULT_RTLIB=compiler-rt
 	   -DCLANG_DEFAULT_UNWINDLIB=libunwind
@@ -119,7 +128,7 @@ src_config() {
 		_flags+=(
 		  -DLIBCXX{,ABI}_USE_COMPILER_RT=ON
 		  -DLIBCXX_HAS_ATOMIC_LIB=OFF
-		  #-DLIBCXX_ENABLE_ASSERTIONS=ON
+		  -DLIBCXX_ENABLE_ASSERTIONS=ON
 		  -DSANITIZER_CXX_ABI=libcxxabi
 		  -DCLANG_DEFAULT_CXX_STDLIB=libc++
 		)
@@ -146,8 +155,27 @@ if [[ $ELIBC = musl ]]; then
 	[[ $STDLIB != libcxx ]] || _args+=(-DLIBCXX_HAS_MUSL_LIBC=ON)
 	[[ $TRIPLE != i?86-*-musl ]] || _args+=(${NOSANITIZERS_ARGS[@]})
 elif [[ $ELIBC = uclibc ]]; then
-	patch -Np1 -d tools/clang < ../clang-uClibc-dynamic-linker-path.patch
 	_args+=(${NOSANITIZERS_ARGS[@]})
+elif [[ $TRIPLE = i?86-*-gnu ]]; then
+	_args+=(-DCOMPILER_RT_BUILD_LIBFUZZER=OFF)
+fi
+
+if [[ $CROSS_X86 ]]; then
+	TRIPLE="${TRIPLE/x86_64/i686}"
+	CFLAGS="${CFLAGS/-march=x86-64-v? }"
+	CXXFLAGS="${CXXFLAGS/-march=x86-64-v? }"
+	LDFLAGS+=" -Wl,-rpath-link,/${TRIPLE}/usr/lib"
+
+	# https://cmake.org/cmake/help/latest/manual/cmake-toolchains.7.html#cross-compiling
+	# https://cmake.org/cmake/help/book/mastering-cmake/chapter/Cross%20Compiling%20With%20CMake.html
+	_args+=(
+		-DCMAKE_SYSTEM_NAME=Linux
+		-DCMAKE_C_COMPILER=$TRIPLE-gcc
+		-DCMAKE_CXX_COMPILER=$TRIPLE-g++
+		-DCMAKE_FIND_ROOT_PATH=/$TRIPLE
+		-DCMAKE_FIND_ROOT_PATH_MODE_PROGRAM=NEVER
+		-DCMAKE_FIND_ROOT_PATH_MODE_{LIBRARY,INCLUDE}=ONLY
+	)
 fi
 
 if [[ $TRIPLE = i?86-* ]]; then
@@ -183,8 +211,8 @@ fi
 rm -f a.out
 
 ninja
-ninja install
 rm -rf $PKG
+[[ $CROSS_X86 ]] || ninja install
 DESTDIR=$PKG ninja install &> /dev/null
 
 if [[ $TRIPLE = i?86-* && $TRIPLE != i386-* ]]; then
@@ -217,10 +245,12 @@ fi
 ln -s clang.cfg "$PKG/usr/lib/clang/clang++.cfg"
 cp -d $PKG/usr/lib/clang/*.cfg "/usr/lib/clang/"
 
+du -sh $PKG/{,usr/*}
 echo "$VERSION" > $PKG/../VERSION
-clang -v main.c
-readelf -ln a.out | grep '/lib'
-./a.out
+if ! [[ $CROSS_X86 ]]; then
+	clang -v main.c
+	readelf -ln a.out | grep '/lib'
+fi
 
 for d in {$PKG,}/; do
 	cxxdir="${d}usr/include/$TRIPLE/c++/v1"

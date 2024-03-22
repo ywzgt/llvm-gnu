@@ -1,0 +1,51 @@
+--- llvm/include/llvm/TargetParser/Triple.h
++++ llvm/include/llvm/TargetParser/Triple.h
+@@ -249,6 +249,10 @@
+     MuslEABI,
+     MuslEABIHF,
+     MuslX32,
++    uClibc,
++    uClibcEABI,
++    uClibcEABIHF,
++    uClibcX32,
+
+     MSVC,
+     Itanium,
+@@ -764,6 +768,14 @@
+            getEnvironment() == Triple::OpenHOS || isOSLiteOS();
+   }
+
++  /// Tests whether the environment is uClibc
++  bool isUClibc() const {
++    return getEnvironment() == Triple::uClibc ||
++           getEnvironment() == Triple::uClibcEABI ||
++           getEnvironment() == Triple::uClibcEABIHF ||
++           getEnvironment() == Triple::uClibcX32;
++  }
++
+   /// Tests whether the target is OHOS
+   /// LiteOS default enviroment is also OHOS, but omited on triple.
+   bool isOHOSFamily() const { return isOpenHOS() || isOSLiteOS(); }
+@@ -1011,7 +1023,7 @@
+   /// Tests whether the target is X32.
+   bool isX32() const {
+     EnvironmentType Env = getEnvironment();
+-    return Env == Triple::GNUX32 || Env == Triple::MuslX32;
++    return Env == Triple::GNUX32 || Env == Triple::MuslX32 || Env == Triple::uClibcX32;
+   }
+
+   /// Tests whether the target is eBPF.
+
+--- llvm/lib/TargetParser/Triple.cpp
++++ llvm/lib/TargetParser/Triple.cpp
+@@ -307,6 +307,10 @@
+   case MuslEABI: return "musleabi";
+   case MuslEABIHF: return "musleabihf";
+   case MuslX32: return "muslx32";
++  case uClibc: return "uclibc";
++  case uClibcEABI: return "uclibceabi";
++  case uClibcEABIHF: return "uclibceabihf";
++  case uClibcX32: return "uclibcx32";
+   case Simulator: return "simulator";
+   case Pixel: return "pixel";
+   case Vertex: return "vertex";

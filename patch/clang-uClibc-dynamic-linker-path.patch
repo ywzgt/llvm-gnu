@@ -1,10 +1,10 @@
 --- clang/lib/Driver/ToolChains/Linux.cpp
 +++ clang/lib/Driver/ToolChains/Linux.cpp
 @@ -475,6 +475,27 @@
- 
+
      return "/lib/ld-musl-" + ArchName + ".so.1";
    }
-+  if (Triple.isUclibc()) {
++  if (Triple.isUClibc()) {
 +    std::string LoaderSuffix;
 +    switch (Arch) {
 +
@@ -23,8 +23,8 @@
 +    default: break;
 +    }
 +
-+    return "/lib/ld"  LoaderSuffix  "-uClibc.so.1";
++    return "/lib/ld" + LoaderSuffix + "-uClibc.so.1";
 +  }
- 
+
    std::string LibDir;
    std::string Loader;
