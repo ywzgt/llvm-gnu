@@ -150,6 +150,11 @@ elif [[ $ELIBC = uclibc ]]; then
 	_args+=(${NOSANITIZERS_ARGS[@]})
 fi
 
+if [[ $TRIPLE = i?86-* ]]; then
+	CFLAGS="${CFLAGS/x86-64-v?/i686}"
+	CXXFLAGS="${CXXFLAGS/x86-64-v?/i686}"
+fi
+
 mkdir -v build
 cd build
 
@@ -185,8 +190,8 @@ DESTDIR=$PKG ninja install &> /dev/null
 if [[ $TRIPLE = i?86-* && $TRIPLE != i386-* ]]; then
 	rt_lib="$PKG/usr/lib/clang/${VERSION%%.*}/lib"
 	if [ -d "$rt_lib/${TRIPLE/i?86/i386}" ]; then
-		mv $rt_lib/{${TRIPLE/i?86/i386},$TRIPLE}
-		mv ${rt_lib#$PKG}/{${TRIPLE/i?86/i386},$TRIPLE}
+		ln -s ${TRIPLE/i?86/i386} "$rt_lib/$TRIPLE"
+		ln -sf ${TRIPLE/i?86/i386} "${rt_lib#$PKG}/$TRIPLE"
 	fi
 fi
 
