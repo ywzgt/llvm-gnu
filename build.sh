@@ -35,6 +35,9 @@ for arg in $@; do
 			ELIBC=uclibc
 			STDLIB=libstdc++
 			;;
+		cross32)
+			CROSS_X86=1
+			;;
 	esac
 done
 
@@ -52,17 +55,15 @@ for i in ${SRC[@]}; do
 	f=$(basename $i)
 	if [[ $f = *.src.tar.xz && ! -d ${f%.tar.xz} ]]; then
 		echo "Extracting $f..."
-		tar xf $f &
+		tar xf $f
 	fi
 done
 
 cd llvm-${VERSION}.src
-sed '/LLVM_COMMON_CMAKE_UTILS/s@../cmake@LLVM-cmake.src@'          \
-    -i CMakeLists.txt
+sed '/LLVM_COMMON_CMAKE_UTILS/s@../cmake@LLVM-cmake.src@' \
+	-i CMakeLists.txt
 sed '/LLVM_THIRD_PARTY_DIR/s@../third-party@LLVM-third-party.src@' \
-    -i cmake/modules/HandleLLVMOptions.cmake
-
-while pidof -q tar; do sleep 0.1; done
+	-i cmake/modules/HandleLLVMOptions.cmake
 mv ../cmake-${VERSION}.src LLVM-cmake.src
 mv ../third-party-${VERSION}.src LLVM-third-party.src
 mv ../clang-${VERSION}.src tools/clang
@@ -107,6 +108,10 @@ NOSANITIZERS_ARGS=(
 )
 
 src_config() {
+	if [[ $CROSS_X86 ]]; then
+		$@; return $?
+	fi
+
 	local _flags=(
 	   -DCLANG_DEFAULT_RTLIB=compiler-rt
 	   -DCLANG_DEFAULT_UNWINDLIB=libunwind
@@ -148,6 +153,25 @@ if [[ $ELIBC = musl ]]; then
 elif [[ $ELIBC = uclibc ]]; then
 	patch -Np1 -d tools/clang < ../clang-uClibc-dynamic-linker-path.patch
 	_args+=(${NOSANITIZERS_ARGS[@]})
+elif [[ $TRIPLE = i?86-*-gnu ]]; then
+	_args+=(-DCOMPILER_RT_BUILD_LIBFUZZER=OFF)
+fi
+
+if [[ $CROSS_X86 ]]; then
+	TRIPLE="${TRIPLE/x86_64/i686}"
+	CFLAGS="${CFLAGS/-march=x86-64-v? }"
+	CXXFLAGS="${CXXFLAGS/-march=x86-64-v? }"
+
+	# https://cmake.org/cmake/help/latest/manual/cmake-toolchains.7.html#cross-compiling
+	# https://cmake.org/cmake/help/book/mastering-cmake/chapter/Cross%20Compiling%20With%20CMake.html
+	_args+=(
+		-DCMAKE_SYSTEM_NAME=Linux
+		-DCMAKE_C_COMPILER=$TRIPLE-gcc
+		-DCMAKE_CXX_COMPILER=$TRIPLE-g++
+		-DCMAKE_FIND_ROOT_PATH=/$TRIPLE
+		-DCMAKE_FIND_ROOT_PATH_MODE_PROGRAM=NEVER
+		-DCMAKE_FIND_ROOT_PATH_MODE_{LIBRARY,INCLUDE}=ONLY
+	)
 fi
 
 if [[ $TRIPLE = i?86-* ]]; then
@@ -217,10 +241,12 @@ fi
 ln -s clang.cfg "$PKG/usr/lib/clang/clang++.cfg"
 cp -d $PKG/usr/lib/clang/*.cfg "/usr/lib/clang/"
 
+du -sh $PKG/{,usr/*}
 echo "$VERSION" > $PKG/../VERSION
-clang -v main.c
-readelf -ln a.out | grep '/lib'
-./a.out
+if ! [[ $CROSS_X86 ]]; then
+	clang -v main.c
+	readelf -ln a.out | grep '/lib'
+fi
 
 for d in {$PKG,}/; do
 	cxxdir="${d}usr/include/$TRIPLE/c++/v1"
