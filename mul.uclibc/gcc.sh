@@ -21,16 +21,16 @@ mkdir -v build
 cd build
 
 ../configure --prefix=/usr \
-	--enable-default-pie \
-	--enable-default-ssp \
-	--enable-languages=c,c++ \
-	--enable-multilib \
 	--disable-bootstrap \
 	--disable-fixincludes \
 	--disable-lib{sanitizer,ssp} \
+	--enable-default-pie \
+	--enable-default-ssp \
+	--enable-multilib \
+	--enable-languages=c,c++ \
+	--with-multilib-list=m32,m64,mx32 \
 	--with-arch=x86-64-v3 \
-	--with-system-zlib \
-	--with-multilib-list=m32,m64
+	--with-system-zlib
 
 make
 make DESTDIR=$PWD/pkg install

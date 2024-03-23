@@ -42,7 +42,7 @@ jobs:
     - name: LIBC m32
       run: sudo chroot target /usr/bin/env -i HOME=/root TERM=$TERM PATH=/usr/bin:/usr/sbin /bin/bash --login -c "cd /build/mul.uclibc; bash -e libc.sh"
     - name: Copy
-      run: sudo mkdir rootfs/usr/lib32; sudo ln -srv rootfs/{usr/lib32,}; sudo cp -va target/build/p/{,usr/}lib32/* rootfs/lib32
+      run: sudo mkdir rootfs/usr/lib32; sudo ln -srv rootfs/{usr/lib32,}; sudo cp -va target/build/p/{,usr/}lib32/* rootfs/lib32; sudo ln -srv rootfs/lib{32/ld-uClibc.so.1,}; sudo ln -sfrv rootfs/lib/{uclibc,libssp}_nonshared.a
     - name: Build
       run: sudo chroot rootfs /usr/bin/env -i HOME=/root TERM=$TERM PATH=/usr/bin:/usr/sbin /bin/bash --login -c "cd /build/mul.uclibc; bash -e gcc.sh"
 
