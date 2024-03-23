@@ -50,8 +50,8 @@ if [[ $STDLIB = libcxx ]]; then
 fi
 
 rm -rf libunwind llvm-${VERSION}.src
+wget -nv -c "${SRC[@]}"
 for i in ${SRC[@]}; do
-	wget -nv -c $i
 	f=$(basename $i)
 	if [[ $f = *.src.tar.xz && ! -d ${f%.tar.xz} ]]; then
 		echo "Extracting $f..."
@@ -260,8 +260,9 @@ if [[ $ELIBC = uclibc ]]; then
 fi
 
 ln -s clang.cfg "$PKG/usr/lib/clang/clang++.cfg"
-du -sh $PKG/{,usr/*}
 echo "$VERSION" > $PKG/../VERSION
+du -sh $PKG
+echo
 
 if [[ $CROSS_X86 ]]; then
 	cp -d $PKG/usr/lib/clang/*.cfg "/${TRIPLE}/usr/lib/clang/"

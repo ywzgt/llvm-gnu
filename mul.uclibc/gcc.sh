@@ -17,6 +17,14 @@ sed '/m64=/s/lib64/lib/' -i.orig gcc/config/i386/t-linux64
 sed '/ld.*-uClibc.so.0/s/0/1/' -i.ori gcc/config/linux.h
 patch -Np1 -i ../uClibc-provides-libssp.patch
 
+wget -nv https://gitweb.gentoo.org/proj/gcc-patches.git/plain/13.2.0/musl/50_all_cpu_indicator.patch \
+	https://gitweb.gentoo.org/proj/gcc-patches.git/plain/13.2.0/musl/50_all_posix_memalign.patch \
+	https://gitweb.gentoo.org/proj/gcc-patches.git/plain/13.2.0/gentoo/07_all_libiberty-asprintf.patch
+
+patch -p1 -i 07*.patch
+patch -p1 -i 50_all_posix_memalign.patch
+patch -p1 -i 50_all_cpu_indicator.patch
+
 mkdir -v build
 cd build
 
