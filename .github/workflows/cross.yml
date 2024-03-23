@@ -47,8 +47,6 @@ jobs:
       run: sudo chroot rootfs /usr/bin/env -i HOME=/root TERM=$TERM PATH=/usr/bin:/usr/sbin /bin/bash --login -c "cd /build/cross.x86; bash -e binutils && bash -e gcc"
     - name: Run script to cross build llvm
       run: sudo chroot rootfs /usr/bin/env -i HOME=/root TERM=$TERM PATH=/usr/bin:/usr/sbin /bin/bash --login -c "cd /build; bash build.sh uclibc cross32"
-    - name: Prepare tools for target
-      run: sudo cp -av rootfs/build/DEST/* target/
     - name: Run script to native build llvm
       run: sudo chroot target /usr/bin/env -i HOME=/root TERM=$TERM PATH=/usr/bin:/usr/sbin /bin/bash --login -c "cd /build; bash build.sh uclibc"
     - name: Run script to strip

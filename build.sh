@@ -128,7 +128,7 @@ src_config() {
 		_flags+=(
 		  -DLIBCXX{,ABI}_USE_COMPILER_RT=ON
 		  -DLIBCXX_HAS_ATOMIC_LIB=OFF
-		  -DLIBCXX_ENABLE_ASSERTIONS=ON
+		  -DLIBCXX_ENABLE_ASSERTIONS=ON  # TODO(LLVM 19): Produce a deprecation warning.
 		  -DSANITIZER_CXX_ABI=libcxxabi
 		  -DCLANG_DEFAULT_CXX_STDLIB=libc++
 		)
@@ -166,16 +166,25 @@ if [[ $CROSS_X86 ]]; then
 	CXXFLAGS="${CXXFLAGS/-march=x86-64-v? }"
 	LDFLAGS+=" -Wl,-rpath-link,/${TRIPLE}/usr/lib"
 
+	if [[ -x /usr/bin/$TRIPLE-gcc ]]; then
+		CROSS_C=$TRIPLE-gcc
+		CROSS_CXX=$TRIPLE-g++
+	else
+		CROSS_C=$TRIPLE-clang
+		CROSS_CXX=$TRIPLE-clang++
+	fi
+
 	# https://cmake.org/cmake/help/latest/manual/cmake-toolchains.7.html#cross-compiling
 	# https://cmake.org/cmake/help/book/mastering-cmake/chapter/Cross%20Compiling%20With%20CMake.html
 	_args+=(
 		-DCMAKE_SYSTEM_NAME=Linux
-		-DCMAKE_C_COMPILER=$TRIPLE-gcc
-		-DCMAKE_CXX_COMPILER=$TRIPLE-g++
+		-DCMAKE_C_COMPILER=$CROSS_C
+		-DCMAKE_CXX_COMPILER=$CROSS_CXX
 		-DCMAKE_FIND_ROOT_PATH=/$TRIPLE
 		-DCMAKE_FIND_ROOT_PATH_MODE_PROGRAM=NEVER
 		-DCMAKE_FIND_ROOT_PATH_MODE_{LIBRARY,INCLUDE}=ONLY
 	)
+	unset CROSS_C{,XX}
 fi
 
 if [[ $TRIPLE = i?86-* ]]; then
@@ -212,14 +221,22 @@ rm -f a.out
 
 ninja
 rm -rf $PKG
-[[ $CROSS_X86 ]] || ninja install
+if ! [[ $CROSS_X86 ]]; then
+	ninja install
+else
+	DESTDIR=/${TRIPLE} ninja install
+fi
 DESTDIR=$PKG ninja install &> /dev/null
 
 if [[ $TRIPLE = i?86-* && $TRIPLE != i386-* ]]; then
 	rt_lib="$PKG/usr/lib/clang/${VERSION%%.*}/lib"
 	if [ -d "$rt_lib/${TRIPLE/i?86/i386}" ]; then
 		ln -s ${TRIPLE/i?86/i386} "$rt_lib/$TRIPLE"
-		ln -sf ${TRIPLE/i?86/i386} "${rt_lib#$PKG}/$TRIPLE"
+		if ! [[ $CROSS_X86 ]]; then
+			ln -sf ${TRIPLE/i?86/i386} "${rt_lib#$PKG}/$TRIPLE"
+		else
+			ln -sf ${TRIPLE/i?86/i386} "/${TRIPLE}/${rt_lib#$PKG/}/$TRIPLE"
+		fi
 	fi
 fi
 
@@ -243,11 +260,13 @@ if [[ $ELIBC = uclibc ]]; then
 fi
 
 ln -s clang.cfg "$PKG/usr/lib/clang/clang++.cfg"
-cp -d $PKG/usr/lib/clang/*.cfg "/usr/lib/clang/"
-
 du -sh $PKG/{,usr/*}
 echo "$VERSION" > $PKG/../VERSION
-if ! [[ $CROSS_X86 ]]; then
+
+if [[ $CROSS_X86 ]]; then
+	cp -d $PKG/usr/lib/clang/*.cfg "/${TRIPLE}/usr/lib/clang/"
+else
+	cp -d $PKG/usr/lib/clang/*.cfg "/usr/lib/clang/"
 	clang -v main.c
 	readelf -ln a.out | grep '/lib'
 fi

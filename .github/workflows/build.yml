@@ -28,7 +28,7 @@ jobs:
         echo ''
         sudo bash -c "echo -e 'nameserver 1.1.1.1\nnameserver 8.8.8.8' >rootfs/etc/resolv.conf"
         sudo install -do $(id -u) -g $(id -g) rootfs/build
-        cp *.sh rootfs/build
+        cp *.sh patch/*.patch rootfs/build
 
     - name: CMAKE
       run: sudo chroot rootfs /usr/bin/env -i HOME=/root TERM=$TERM PATH=/usr/bin:/usr/sbin /bin/bash --login -c "cd /build; bash cmake.sh"
@@ -90,7 +90,7 @@ jobs:
         echo ''
         sudo bash -c "echo -e 'nameserver 1.1.1.1\nnameserver 8.8.8.8' >rootfs/etc/resolv.conf"
         sudo install -do $(id -u) -g $(id -g) rootfs/build
-        cp *.sh rootfs/build
+        cp *.sh patch/*.patch rootfs/build
 
     - name: CMAKE
       run: sudo chroot rootfs /usr/bin/env -i HOME=/root TERM=$TERM PATH=/usr/bin:/usr/sbin /bin/bash --login -c "cd /build; bash cmake.sh"
