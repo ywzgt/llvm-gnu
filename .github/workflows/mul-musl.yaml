@@ -1,0 +1,63 @@
+name: multilib musl
+on:
+  workflow_dispatch:
+jobs:
+  musl:
+    runs-on: ubuntu-latest
+    permissions: write-all
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+    - name: Preparing LFS rootfs and Setting Up the Environment
+      run: |
+        wget -q https://api.github.com/repos/ywzgt/alfs-musl/releases
+        for i in {r,x}32; do
+        URL="$(grep -o https://.*.$i/rootfs.tar.xz releases | sort -uV | tail -1)"
+        wget -nv -c $URL{,.sha256}
+        sha256sum -c rootfs.tar.xz.sha256
+        sudo mkdir -p rootfs{,$i}
+        echo " -> Extracting the $i 'rootfs.tar.xz'..."
+        sudo tar xpf rootfs.tar.xz -C rootfs$i
+        TARGET="$(sudo chroot rootfs$i gcc -dumpmachine)"
+        sudo mv rootfs{$i,/$TARGET}; rm -f rootfs.*xz*
+        ln -s rootfs/$TARGET target${i/r}
+        done
+        wget -nv https://github.com/ywzgt/alfs-musl/releases/latest/download/rootfs.tar.xz{,.sha256}
+        sha256sum -c rootfs.tar.xz.sha256; echo " -> Extracting the 64bit 'rootfs.tar.xz'..."
+        sudo tar xpf rootfs.tar.xz -C rootfs
+        for LFS in rootfs{,/$TARGET}; do
+            echo " -> Preparing Virtual Kernel File Systems..."
+            sudo mkdir -pv $LFS/{dev,proc,sys,run,tmp}
+            sudo mount -v --bind /dev $LFS/dev
+            sudo mount -v --bind /dev/pts $LFS/dev/pts
+            sudo mount -vt proc proc $LFS/proc
+            sudo mount -vt sysfs sysfs $LFS/sys
+            sudo mount -vt tmpfs tmpfs $LFS/run
+            sudo mount -vt tmpfs tmpfs $LFS/tmp
+            if [ -h $LFS/dev/shm ]; then sudo mkdir -pv $LFS/$(readlink $LFS/dev/shm); else sudo mount -vt tmpfs -o nosuid,nodev devshm $LFS/dev/shm; fi
+            echo ''; sudo bash -c "echo 'nameserver 1.1.1.1' >$LFS/etc/resolv.conf"
+            sudo install -do $(id -u) -g $(id -g) $LFS/build
+            cp *.sh patch/*.patch $LFS/build
+            cp -r mul.uclibc $LFS/build
+        done
+
+    - name: LIBC m32
+      run: sudo chroot target32 /usr/bin/env -i HOME=/root TERM=$TERM PATH=/usr/bin:/usr/sbin /bin/bash --login -c "cd /build/mul.uclibc; bash -e musl.sh"
+    - name: LIBC mx32
+      run: sudo chroot targetx32 /usr/bin/env -i HOME=/root TERM=$TERM PATH=/usr/bin:/usr/sbin /bin/bash --login -c "cd /build/mul.uclibc; bash -e musl.sh x"
+    - name: Copy
+      run: |
+        sudo mkdir -pv rootfs/usr/lib{,x}32; sudo ln -srv rootfs/{usr/lib32,}; sudo ln -srv rootfs/{usr/libx32,}
+        sudo cp -va target32/build/p/usr/lib32/* rootfs/lib32; sudo ln -srv rootfs/lib{32/libc.so,/ld-musl-i386.so.1}
+        sudo cp -va targetx32/build/p/usr/libx32/* rootfs/libx32; sudo ln -srv rootfs/lib{x32/libc.so,/ld-musl-x32.so.1}
+    - name: Build
+      run: sudo chroot rootfs /usr/bin/env -i HOME=/root TERM=$TERM PATH=/usr/bin:/usr/sbin /bin/bash --login -c "cd /build/mul.uclibc; bash -e gcc.sh"
+
+    - name: Gh login
+      if: ${{ failure() }}
+      run: echo ${{ secrets.GITHUB_TOKEN }} | gh auth login --with-token; gh auth setup-git; gh auth status
+    - name: Setup tmate ssh session
+      if: ${{ failure() }}
+      uses: mxschmitt/action-tmate@v3
+      with:
+        limit-access-to-actor: true
