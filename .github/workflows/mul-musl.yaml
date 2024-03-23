@@ -13,6 +13,7 @@ jobs:
         wget -q https://api.github.com/repos/ywzgt/alfs-musl/releases
         wget -nv https://github.com/ywzgt/alfs-musl/releases/latest/download/rootfs.tar.xz{,.sha256}
         sha256sum -c rootfs.tar.xz.sha256; echo " -> Extracting the 64bit 'rootfs.tar.xz'..."
+        sudo mkdir rootfs
         sudo tar xpf rootfs.tar.xz -C rootfs
         rm rootfs.tar.xz*
         for i in {r,x}32; do
@@ -25,7 +26,7 @@ jobs:
         TARGET="$(sudo chroot rootfs$i gcc -dumpmachine)"
         sudo mv rootfs{$i,/$TARGET}; rm -f rootfs.*xz*
         ln -s rootfs/$TARGET target${i/r}
-        for LFS in rootfs{,/$TARGET}; do
+        LFS=rootfs/$TARGET
             echo " -> Preparing Virtual Kernel File Systems..."
             sudo mkdir -pv $LFS/{dev,proc,sys,run,tmp}
             sudo mount -v --bind /dev $LFS/dev
@@ -40,7 +41,6 @@ jobs:
             cp *.sh patch/*.patch $LFS/build
             cp -r mul.uclibc $LFS/build
         done
-        done
 
     - name: LIBC m32
       run: sudo chroot target32 /usr/bin/env -i HOME=/root TERM=$TERM PATH=/usr/bin:/usr/sbin /bin/bash --login -c "cd /build/mul.uclibc; bash -e musl.sh"
@@ -49,8 +49,8 @@ jobs:
     - name: Copy
       run: |
         sudo mkdir -pv rootfs/usr/lib{,x}32; sudo ln -srv rootfs/{usr/lib32,}; sudo ln -srv rootfs/{usr/libx32,}
-        sudo cp -va target32/build/p/usr/lib32/* rootfs/lib32; sudo ln -srv rootfs/lib{32/libc.so,/ld-musl-i386.so.1}
-        sudo cp -va targetx32/build/p/usr/libx32/* rootfs/libx32; sudo ln -srv rootfs/lib{x32/libc.so,/ld-musl-x32.so.1}
+        sudo cp -va target32/{build/p/usr/lib32/*,lib/libssp_nonshared.a} rootfs/lib32; sudo ln -srv rootfs/lib{32/libc.so,/ld-musl-i386.so.1}
+        sudo cp -va targetx32/{build/p/usr/libx32/*,lib/libssp_nonshared.a} rootfs/libx32; sudo ln -srv rootfs/lib{x32/libc.so,/ld-musl-x32.so.1}
     - name: Build
       run: sudo chroot rootfs /usr/bin/env -i HOME=/root TERM=$TERM PATH=/usr/bin:/usr/sbin /bin/bash --login -c "cd /build/mul.uclibc; bash -e gcc.sh"
 
