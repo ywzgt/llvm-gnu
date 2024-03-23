@@ -26,7 +26,9 @@ jobs:
         TARGET="$(sudo chroot rootfs$i gcc -dumpmachine)"
         sudo mv rootfs{$i,/$TARGET}; rm -f rootfs.*xz*
         ln -s rootfs/$TARGET target${i/r}
-        LFS=rootfs/$TARGET
+        ROOT+=(rootfs/$TARGET)
+        done
+        for LFS in ${ROOT[@]} rootfs; do
             echo " -> Preparing Virtual Kernel File Systems..."
             sudo mkdir -pv $LFS/{dev,proc,sys,run,tmp}
             sudo mount -v --bind /dev $LFS/dev
