@@ -1,6 +1,6 @@
---- clang/lib/Driver/ToolChains/Linux.cpp
-+++ clang/lib/Driver/ToolChains/Linux.cpp
-@@ -475,6 +475,27 @@
+--- clang-18.1.2.src/lib/Driver/ToolChains/Linux.cpp
++++ clang-18.1.2.src/lib/Driver/ToolChains/Linux.cpp
+@@ -475,6 +475,27 @@ std::string Linux::getDynamicLinker(const ArgList &Args) const {
 
      return "/lib/ld-musl-" + ArchName + ".so.1";
    }

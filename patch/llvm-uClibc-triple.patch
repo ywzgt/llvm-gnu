@@ -1,6 +1,6 @@
---- llvm/include/llvm/TargetParser/Triple.h
-+++ llvm/include/llvm/TargetParser/Triple.h
-@@ -249,6 +249,10 @@
+--- llvm-18.1.2.src/include/llvm/TargetParser/Triple.h
++++ llvm-18.1.2.src/include/llvm/TargetParser/Triple.h
+@@ -249,6 +249,10 @@ public:
      MuslEABI,
      MuslEABIHF,
      MuslX32,
@@ -11,7 +11,7 @@
 
      MSVC,
      Itanium,
-@@ -764,6 +768,14 @@
+@@ -764,6 +768,14 @@ public:
             getEnvironment() == Triple::OpenHOS || isOSLiteOS();
    }
 
@@ -26,7 +26,7 @@
    /// Tests whether the target is OHOS
    /// LiteOS default enviroment is also OHOS, but omited on triple.
    bool isOHOSFamily() const { return isOpenHOS() || isOSLiteOS(); }
-@@ -1011,7 +1023,7 @@
+@@ -1011,7 +1023,7 @@ public:
    /// Tests whether the target is X32.
    bool isX32() const {
      EnvironmentType Env = getEnvironment();
@@ -35,10 +35,9 @@
    }
 
    /// Tests whether the target is eBPF.
-
---- llvm/lib/TargetParser/Triple.cpp
-+++ llvm/lib/TargetParser/Triple.cpp
-@@ -307,6 +307,10 @@
+--- llvm-18.1.2.src/lib/TargetParser/Triple.cpp
++++ llvm-18.1.2.src/lib/TargetParser/Triple.cpp
+@@ -307,6 +307,10 @@ StringRef Triple::getEnvironmentTypeName(EnvironmentType Kind) {
    case MuslEABI: return "musleabi";
    case MuslEABIHF: return "musleabihf";
    case MuslX32: return "muslx32";
@@ -49,3 +48,14 @@
    case Simulator: return "simulator";
    case Pixel: return "pixel";
    case Vertex: return "vertex";
+@@ -671,6 +675,10 @@ static Triple::EnvironmentType parseEnvironment(StringRef EnvironmentName) {
+       .StartsWith("musleabi", Triple::MuslEABI)
+       .StartsWith("muslx32", Triple::MuslX32)
+       .StartsWith("musl", Triple::Musl)
++      .StartsWith("uclibceabihf", Triple::uClibcEABIHF)
++      .StartsWith("uclibceabi", Triple::uClibcEABI)
++      .StartsWith("uclibcx32", Triple::uClibcX32)
++      .StartsWith("uclibc", Triple::uClibc)
+       .StartsWith("msvc", Triple::MSVC)
+       .StartsWith("itanium", Triple::Itanium)
+       .StartsWith("cygnus", Triple::Cygnus)
