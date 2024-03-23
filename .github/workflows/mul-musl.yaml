@@ -11,20 +11,20 @@ jobs:
     - name: Preparing LFS rootfs and Setting Up the Environment
       run: |
         wget -q https://api.github.com/repos/ywzgt/alfs-musl/releases
+        wget -nv https://github.com/ywzgt/alfs-musl/releases/latest/download/rootfs.tar.xz{,.sha256}
+        sha256sum -c rootfs.tar.xz.sha256; echo " -> Extracting the 64bit 'rootfs.tar.xz'..."
+        sudo tar xpf rootfs.tar.xz -C rootfs
+        rm rootfs.tar.xz*
         for i in {r,x}32; do
         URL="$(grep -o https://.*.$i/rootfs.tar.xz releases | sort -uV | tail -1)"
         wget -nv -c $URL{,.sha256}
         sha256sum -c rootfs.tar.xz.sha256
-        sudo mkdir -p rootfs{,$i}
+        sudo mkdir -p rootfs$i
         echo " -> Extracting the $i 'rootfs.tar.xz'..."
         sudo tar xpf rootfs.tar.xz -C rootfs$i
         TARGET="$(sudo chroot rootfs$i gcc -dumpmachine)"
         sudo mv rootfs{$i,/$TARGET}; rm -f rootfs.*xz*
         ln -s rootfs/$TARGET target${i/r}
-        done
-        wget -nv https://github.com/ywzgt/alfs-musl/releases/latest/download/rootfs.tar.xz{,.sha256}
-        sha256sum -c rootfs.tar.xz.sha256; echo " -> Extracting the 64bit 'rootfs.tar.xz'..."
-        sudo tar xpf rootfs.tar.xz -C rootfs
         for LFS in rootfs{,/$TARGET}; do
             echo " -> Preparing Virtual Kernel File Systems..."
             sudo mkdir -pv $LFS/{dev,proc,sys,run,tmp}
@@ -39,6 +39,7 @@ jobs:
             sudo install -do $(id -u) -g $(id -g) $LFS/build
             cp *.sh patch/*.patch $LFS/build
             cp -r mul.uclibc $LFS/build
+        done
         done
 
     - name: LIBC m32
