@@ -17,8 +17,8 @@ cd $SRC
 sed 's@m64=.*@m64=../lib@;s@m32=.*@m32=../lib32@;s@mx32=.*@mx32=../libx32@' -i.ori gcc/config/i386/t-linux64
 sed '/ld.*-uClibc.so.0/s/0/1/' -i.ori gcc/config/linux.h
 
-sed -i.ori '1414,$d' libgomp/Makefile.in
-sed -i.ori '1458,$d' libquadmath/Makefile.in
+#sed -i.ori '1414,$d' libgomp/Makefile.in
+#sed -i.ori '1458,$d' libquadmath/Makefile.in
 
 patch -Np1 -i ../uClibc-provides-libssp.patch
 
@@ -36,7 +36,7 @@ cd build
 ../configure --prefix=/usr \
 	--disable-bootstrap \
 	--disable-fixincludes \
-	--disable-lib{sanitizer,ssp} \
+	--disable-lib{sanitizer,ssp,gomp,quadmath} \
 	--enable-default-pie \
 	--enable-default-ssp \
 	--enable-multilib \
