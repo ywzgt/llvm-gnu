@@ -24,9 +24,9 @@ cd build
 	--disable-fixincludes \
 	--disable-libssp \
 	--disable-libsanitizer \
+	--enable-multilib \
 	--enable-default-pie \
 	--enable-default-ssp \
-	--enable-multilib \
 	--enable-languages=c,c++ \
 	--with-arch=x86-64-v3 \
 	--with-linker-hash-style=gnu \

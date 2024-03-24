@@ -19,14 +19,11 @@ sed -i.ori '/UCLIBC_RUNTIME_PREFIX/s/lib/&32/g' \
 	ldso/ldso/dl-elf.c \
 	utils/ld{d,config}.c
 
-# fix undefined reference to `__stack_chk_fail'
-sed -i '/^#include <features.h>$/a\#include <libc-internal.h>' \
-	libc/sysdeps/linux/common/ssp-local.c
 rm -fv include/{crypt,libintl}.h
 make
 make utils
 
 make install DESTDIR=$PWD/p
 make install_utils DESTDIR=$PWD/p
-#ln -sv uclibc_nonshared.a p/usr/lib32/libssp_nonshared.a
+ln -sv uclibc_nonshared.a p/usr/lib32/libssp_nonshared.a
 cp -a p /build
