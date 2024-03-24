@@ -13,7 +13,8 @@ wget -nv "https://ftp.gnu.org/gnu/gcc/$SRC/$SRC_FILE"
 tar xf $SRC_FILE
 cd $SRC
 
-sed '/m64=/s/lib64/lib/' -i.orig gcc/config/i386/t-linux64
+#sed '/m64=/s/lib64/lib/' -i.orig
+sed 's@m64=.*@m64=../lib@;s@m32=.*@m32=../lib32@;s@mx32=.*@mx32=../libx32@' -i.ori gcc/config/i386/t-linux64
 sed '/ld.*-uClibc.so.0/s/0/1/' -i.ori gcc/config/linux.h
 patch -Np1 -i ../uClibc-provides-libssp.patch
 
@@ -46,8 +47,10 @@ rm -fv pkg/usr/lib/*.la
 cp -av pkg/usr/* /usr
 
 echo 'int main(){}' > dummy.c
-${TARGET}-gcc dummy.c -v -Wl,--verbose &> dummy.log
-readelf -l a.out | grep ': /lib'
-grep "/lib.*/libc.so" dummy.log
+for abi in {,x}32 64; do
+	gcc -m$abi dummy.c -v -Wl,--verbose &> dummy.log
+	readelf -l a.out | grep ': /lib'
+	grep "/lib.*/libc.so" dummy.log
+done
 rm dummy.c a.out dummy.log
 rm -rf ../../$SRC
