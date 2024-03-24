@@ -19,6 +19,9 @@ sed -i.ori '/UCLIBC_RUNTIME_PREFIX/s/lib/&32/g' \
 	ldso/ldso/dl-elf.c \
 	utils/ld{d,config}.c
 
+# fix undefined reference to `__stack_chk_fail'
+sed -i '/^#include <features.h>$/a\#include <libc-internal.h>' \
+	libc/sysdeps/linux/common/ssp-local.c
 rm -fv include/{crypt,libintl}.h
 make
 make utils
