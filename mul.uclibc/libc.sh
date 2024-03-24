@@ -25,5 +25,5 @@ make utils
 
 make install DESTDIR=$PWD/p
 make install_utils DESTDIR=$PWD/p
-ln -sv uclibc_nonshared.a p/usr/lib32/libssp_nonshared.a
+#ln -sv uclibc_nonshared.a p/usr/lib32/libssp_nonshared.a
 cp -a p /build

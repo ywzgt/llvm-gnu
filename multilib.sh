@@ -5,16 +5,26 @@ source envars.sh
 
 VERSION=17.0.6
 PKG="$PWD/DEST"
+TRIPLE="$(gcc -dumpmachine)"
+TRIPLE="${TRIPLE/x86_64/i386}"
+RUNTIMES="libunwind;libcxx;libcxxabi"
+
 SRC=(
 	cmake
 	compiler-rt
-	libcxx
-	libcxxabi
 	libunwind
 	llvm
 	runtimes
 	third-party
 )
+
+if [[ $1 = stdcxx ]]; then
+	CXX=libstdc++
+	RUNTIMES=libunwind
+	shift
+else
+	SRC+=(libcxx{,abi})
+fi
 
 pre_src() {
 	rm -rf bld_multi; mkdir bld_multi
@@ -24,18 +34,18 @@ pre_src() {
 	done
 
 	cd bld_multi
-	install -Dm755 /dev/stdin ./i386-pc-linux-gnu-gcc <<-"EOF"
+	install -Dm755 /dev/stdin ./${TRIPLE}-gcc <<-"EOF"
 	#!/bin/sh
 		exec gcc -m32 $@
 	EOF
 
-	install -Dm755 /dev/stdin ./i386-pc-linux-gnu-g++ <<-"EOF"
+	install -Dm755 /dev/stdin ./${TRIPLE}-g++ <<-"EOF"
 	#!/bin/sh
 		exec g++ -m32 $@
 	EOF
 
-	ln -s /bin/clang i386-pc-linux-gnu-clang
-	ln -s /bin/clang++ i386-pc-linux-gnu-clang++
+	ln -s /bin/clang ${TRIPLE}-clang
+	ln -s /bin/clang++ ${TRIPLE}-clang++
 	CFLAGS="${CFLAGS/x86-64-v?/i686}"
 	CXXFLAGS="${CXXFLAGS/x86-64-v?/i686}"
 }
@@ -50,15 +60,15 @@ rt_args=(
 )
 
 stage1() {
-	CC=i386-pc-linux-gnu-gcc CXX=i386-pc-linux-gnu-g++ \
+	CC=${TRIPLE}-gcc CXX=${TRIPLE}-g++ \
 	cmake -S runtimes -B build \
 	-DCMAKE_INSTALL_PREFIX=/usr \
 	-DCMAKE_BUILD_TYPE=Release -GNinja \
-	-DLLVM_ENABLE_RUNTIMES="libunwind;libcxx;libcxxabi"
+	-DLLVM_ENABLE_RUNTIMES="${RUNTIMES}"
 	DESTDIR=$PWD/pkg ninja install -C build; cp -a pkg/usr/lib/* /usr/lib32/
 
 	rm -rf build pkg
-	CC=i386-pc-linux-gnu-gcc CXX=i386-pc-linux-gnu-g++ \
+	CC=${TRIPLE}-gcc CXX=${TRIPLE}-g++ \
 	cmake -S runtimes -B build \
 	-DCMAKE_INSTALL_PREFIX=/usr \
 	-DCMAKE_BUILD_TYPE=Release -GNinja \
@@ -75,11 +85,11 @@ stage2() {
 	[ $# -eq 0 ] || printf "$* \n"
 
 	rm -rf build pkg "$PKG/usr/lib32"
-	CC=i386-pc-linux-gnu-clang CXX=i386-pc-linux-gnu-clang++ \
+	CC=${TRIPLE}-clang CXX=${TRIPLE}-clang++ \
 	cmake -S runtimes -B build \
 	-DCMAKE_INSTALL_PREFIX=/usr \
 	-DCMAKE_BUILD_TYPE=Release -GNinja \
-	-DLLVM_ENABLE_RUNTIMES="libunwind;libcxx;libcxxabi" \
+	-DLLVM_ENABLE_RUNTIMES="${RUNTIMES}" \
 	-DLIBCXX_HAS_ATOMIC_LIB=OFF \
 	-DLIB{UNWIND,CXX{,ABI}}_USE_COMPILER_RT=ON
 	DESTDIR=$PWD/pkg ninja install -C build
@@ -93,6 +103,7 @@ stage2() {
 		return
 	else
 		rm -rf "${PKG}${rt_install_dir}"
+		#[[ ${TRIPLE} != *-uclibc ]] || ARGS="${rt_args[@]}"
 	fi
 
 	rm -rf build pkg
@@ -107,7 +118,7 @@ stage2() {
 	-DCOMPILER_RT_INCLUDE_TESTS=OFF \
 	-DCOMPILER_RT_USE_BUILTINS_LIBRARY=ON \
 	-DLLVM_DEFAULT_TARGET_TRIPLE=$(gcc -dumpmachine) \
-	-DSANITIZER_CXX_ABI=libcxxabi
+	$([[ $CXX ]] || echo -DSANITIZER_CXX_ABI=libcxxabi) ${ARGS}
 	DESTDIR=$PWD/pkg ninja install -C build
 	for i in pkg/usr/lib/linux/*-i386.*; do
 		f=${i##*/}
@@ -129,7 +140,7 @@ else
 fi
 
 pre_src
-rt_install_dir="/usr/lib/clang/${VERSION%%.*}/lib/i386-pc-linux-gnu"
+rt_install_dir="/usr/lib/clang/${VERSION%%.*}/lib/${TRIPLE}"
 
 if [[ $1 != pre ]]; then
 	stage2 "::PASS1\n"
