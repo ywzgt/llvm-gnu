@@ -16,6 +16,10 @@ cd $SRC
 #sed '/m64=/s/lib64/lib/' -i.orig
 sed 's@m64=.*@m64=../lib@;s@m32=.*@m32=../lib32@;s@mx32=.*@mx32=../libx32@' -i.ori gcc/config/i386/t-linux64
 sed '/ld.*-uClibc.so.0/s/0/1/' -i.ori gcc/config/linux.h
+
+sed -i.ori '1414,$d' libgomp/Makefile.in
+sed -i.ori '1458,$d' libquadmath/Makefile.in
+
 patch -Np1 -i ../uClibc-provides-libssp.patch
 
 wget -nv https://gitweb.gentoo.org/proj/gcc-patches.git/plain/13.2.0/musl/50_all_cpu_indicator.patch \
