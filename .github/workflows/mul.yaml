@@ -45,12 +45,6 @@ jobs:
       run: sudo mkdir rootfs/usr/lib32; sudo ln -srv rootfs/{usr/lib32,}; sudo cp -va target/build/p/{,usr/}lib32/* rootfs/lib32; sudo ln -srv rootfs/lib{32/ld-uClibc.so.1,}; sudo ln -sfrv rootfs/lib/{uclibc,libssp}_nonshared.a
     - name: Build
       run: sudo chroot rootfs /usr/bin/env -i HOME=/root TERM=$TERM PATH=/usr/bin:/usr/sbin /bin/bash --login -c "cd /build/mul.uclibc; bash -e gcc.sh"
-    - name: pre llvm
-      run: |
-        wget -nv https://github.com/ywzgt/llvm-toolchain/releases/download/17.0.6-20240319/llvm-uclibc-17.0.6.tar.xz
-        sudo tar xvf llvm-uclibc-17.0.6.tar.xz -C rootfs
-    - name: Build llvm multilib
-      run: sudo chroot rootfs /usr/bin/env -i HOME=/root TERM=$TERM PATH=/usr/bin:/usr/sbin /bin/bash --login -c "cd /build; timeout 15 bash build.sh||true; bash multilib.sh"
     - name: Build pam for i386
       run: sudo chroot rootfs /usr/bin/env -i HOME=/root TERM=$TERM PATH=/usr/bin:/usr/sbin /bin/bash --login -c "cd /build/mul.uclibc; bash -e pam.sh"
 
