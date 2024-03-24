@@ -13,6 +13,7 @@ wget -nv "https://ftp.gnu.org/gnu/gcc/$SRC/$SRC_FILE"
 tar xf $SRC_FILE
 cd $SRC
 
+patch -Np1 -i ../libc-provides-libssp.patch
 sed '/m64=/s/lib64/lib/' -i.ori gcc/config/i386/t-linux64
 sed '/ld.*-uClibc.so.0/s/0/1/' -i.ori gcc/config/linux.h
 
@@ -24,14 +25,12 @@ cd build
 	--disable-fixincludes \
 	--disable-libssp \
 	--disable-libsanitizer \
-	--enable-multilib \
 	--enable-default-pie \
 	--enable-default-ssp \
-	--enable-languages=c,c++ \
 	--with-arch=x86-64-v3 \
-	--with-linker-hash-style=gnu \
 	--with-multilib-list=m64,m32 \
-	--with-system-zlib
+	--with-system-zlib \
+	--enable-languages=c,c++
 
 make
 make DESTDIR=$PWD/pkg install

@@ -8,6 +8,7 @@ PKG="$PWD/DEST"
 TRIPLE="$(gcc -dumpmachine)"
 TRIPLE="${TRIPLE/x86_64/i386}"
 RUNTIMES="libunwind;libcxx;libcxxabi"
+URL="https://github.com/llvm/llvm-project/releases/download/llvmorg-${VERSION}"
 
 SRC=(
 	cmake
@@ -21,7 +22,7 @@ SRC=(
 if [[ $1 = stdcxx ]]; then
 	CXX=libstdc++
 	RUNTIMES=libunwind
-	shift
+	shift; wget -nv -cP.. ${URL}/runtimes-${VERSION}.src.tar.xz
 else
 	SRC+=(libcxx{,abi})
 fi
@@ -103,7 +104,6 @@ stage2() {
 		return
 	else
 		rm -rf "${PKG}${rt_install_dir}"
-		#[[ ${TRIPLE} != *-uclibc ]] || ARGS="${rt_args[@]}"
 	fi
 
 	rm -rf build pkg
@@ -118,14 +118,14 @@ stage2() {
 	-DCOMPILER_RT_INCLUDE_TESTS=OFF \
 	-DCOMPILER_RT_USE_BUILTINS_LIBRARY=ON \
 	-DLLVM_DEFAULT_TARGET_TRIPLE=$(gcc -dumpmachine) \
-	$([[ $CXX ]] || echo -DSANITIZER_CXX_ABI=libcxxabi) ${ARGS}
+	$([[ $CXX ]] || echo -DSANITIZER_CXX_ABI=libcxxabi) "${rt_args[@]}"
 	DESTDIR=$PWD/pkg ninja install -C build
 	for i in pkg/usr/lib/linux/*-i386.*; do
 		f=${i##*/}
-		[ $# -eq 0 ] || install -Dvm644 $i "${rt_install_dir}/${f/-i386}"
+		install -Dvm644 $i "${rt_install_dir}/${f/-i386}"
 	done
 	if [ $# -gt 0 ]; then
-		chmod 755 ${rt_install_dir}/*.so
+		chmod 755 ${rt_install_dir}/*.so || true
 		mkdir -p ${PKG}${rt_install_dir%/i386-*}
 		cp -a ${rt_install_dir} "${PKG}${rt_install_dir%/i386-*}"
 	fi
