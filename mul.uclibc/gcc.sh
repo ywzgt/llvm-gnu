@@ -29,7 +29,6 @@ cd build
 	--enable-default-pie \
 	--enable-default-ssp \
 	--enable-languages=c,c++ \
-	--with-arch=x86-64-v3 \
 	--with-multilib-list=m64,m32 \
 	--with-system-zlib
 
