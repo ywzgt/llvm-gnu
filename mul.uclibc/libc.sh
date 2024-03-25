@@ -9,6 +9,10 @@ tar xf $SRC-$PV.tar.xz
 cp .config $SRC-$PV
 cd $SRC-$PV
 patch -Np1 -i ../uClibc-add-getentropy-from-musl.patch
+patch -Np1 -i ../uClibc-ng-merge_usr.patch
+patch -Np1 -i ../ldconfig-no-warn-default.patch
+
+sed -i.ori 's/^ssp_handler/__stack_chk_fail/;/^strong_alias/d' libc/sysdeps/linux/common/ssp.c
 
 sed -i.old "/^UCLIBC_EXTRA_CFLAGS/s/=.*/=\"$CFLAGS $LDFLAGS\"/" .config
 timeout 10 make silentoldconfig
