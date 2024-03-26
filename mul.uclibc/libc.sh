@@ -4,7 +4,6 @@ SRC="uClibc-ng"
 PV="1.0.46"
 
 . ../envars.sh
-[[ $1 -eq 64 ]] || rm -fv 003-x86_64-multilib.patch
 wget -nv https://downloads.uclibc-ng.org/releases/$PV/$SRC-$PV.tar.xz
 tar xf $SRC-$PV.tar.xz
 
