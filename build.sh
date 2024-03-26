@@ -33,7 +33,7 @@ for arg in $@; do
 			;;
 		uclibc)
 			ELIBC=uclibc
-			STDLIB=libstdc++
+			#STDLIB=libstdc++
 			;;
 		cross32)
 			CROSS_X86=1
