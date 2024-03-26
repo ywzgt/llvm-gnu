@@ -33,7 +33,7 @@ ar r libssp_nonshared.a libc/sysdeps/linux/common/ssp-local.os
 if [[ $1 -eq 64 ]]; then
 	make install
 	make install_utils
-	cp libssp_nonshared /usr/lib
+	cp libssp_nonshared.a /usr/lib
 else
 	make install DESTDIR=$PWD/p
 	make install_utils DESTDIR=$PWD/p
