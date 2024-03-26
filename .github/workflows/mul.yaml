@@ -51,8 +51,8 @@ jobs:
       run: |
         wget -nv https://github.com/ywzgt/llvm-toolchain/releases/download/17.0.6-20240319/llvm-uclibc-17.0.6.tar.xz
         sudo tar xvf llvm-uclibc-17.0.6.tar.xz -C rootfs
-    - name: Build llvm
-      run: sudo chroot rootfs /usr/bin/env -i HOME=/root TERM=$TERM PATH=/usr/bin:/usr/sbin /bin/bash --login -c "cd /build; bash build.sh uclibc||true; bash cxx.sh"
+    # - name: Build llvm
+    #   run: sudo chroot rootfs /usr/bin/env -i HOME=/root TERM=$TERM PATH=/usr/bin:/usr/sbin /bin/bash --login -c "cd /build; bash build.sh uclibc||true; bash cxx.sh"
     - name: Build llvm multilib
       run: sudo chroot rootfs /usr/bin/env -i HOME=/root TERM=$TERM PATH=/usr/bin:/usr/sbin /bin/bash --login -c "cd /build; timeout 15 bash build.sh||true; bash multilib.sh stdcxx pre"
     - name: Build pam for i386
