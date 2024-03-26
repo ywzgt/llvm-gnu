@@ -10,9 +10,9 @@ tar xf $SRC-$PV.tar.xz
 
 if [[ $1 -eq 64 ]]; then
 	rm -fv 003-x86_64-multilib.patch
-	cp config-x86_64 $SRC-$PV/.config
+	cp config-x86_64 $SRC-$PV/.config -v
 else
-	cp .config $SRC-$PV
+	cp .config $SRC-$PV -v
 fi
 
 cd $SRC-$PV
