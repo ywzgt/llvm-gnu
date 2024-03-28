@@ -23,7 +23,7 @@ SRC=(
 # /build/llvm-17.0.6.src/tools/lld/MachO/Target.h:23:10: fatal error: mach-o/compact_unwind_encoding.h: No such file or directory
 #    23 | #include "mach-o/compact_unwind_encoding.h"
 
-for arg in $@; do
+for arg; do
 	case "$arg" in
 		musl)
 			ELIBC=musl
@@ -33,7 +33,7 @@ for arg in $@; do
 			;;
 		uclibc)
 			ELIBC=uclibc
-			#STDLIB=libstdc++
+			STDLIB=libstdc++
 			;;
 		cross32)
 			CROSS_X86=1

@@ -20,9 +20,8 @@ SRC=(
 )
 
 if [[ $1 = stdcxx ]]; then
-	CXX=libstdc++
+	LCXX=n; shift
 	RUNTIMES=libunwind
-	shift; wget -nv -cP.. ${URL}/runtimes-${VERSION}.src.tar.xz
 else
 	SRC+=(libcxx{,abi})
 fi
@@ -30,6 +29,7 @@ fi
 pre_src() {
 	rm -rf bld_multi; mkdir bld_multi
 	for f in ${SRC[@]}; do
+		wget -qc ${URL}/$f-${VERSION}.src.tar.xz
 		tar xf $f-${VERSION}.src.tar.xz -C bld_multi
 		ln -srv bld_multi/$f{-$VERSION.src,}
 	done
@@ -118,7 +118,7 @@ stage2() {
 	-DCOMPILER_RT_INCLUDE_TESTS=OFF \
 	-DCOMPILER_RT_USE_BUILTINS_LIBRARY=ON \
 	-DLLVM_DEFAULT_TARGET_TRIPLE=$(gcc -dumpmachine) \
-	$([[ $CXX ]] || echo -DSANITIZER_CXX_ABI=libcxxabi) "${rt_args[@]}"
+	$([[ $LCXX ]] || echo -DSANITIZER_CXX_ABI=libcxxabi) "${rt_args[@]}"
 	DESTDIR=$PWD/pkg ninja install -C build
 	for i in pkg/usr/lib/linux/*-i386.*; do
 		f=${i##*/}

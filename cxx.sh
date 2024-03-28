@@ -22,7 +22,7 @@ SRC=(
 if [[ $1 = stdcxx ]]; then
 	CXX=libstdc++
 	RUNTIMES=libunwind
-	shift; wget -nv -cP.. ${URL}/runtimes-${VERSION}.src.tar.xz
+	shift
 else
 	SRC+=(libcxx{,abi})
 fi
@@ -30,11 +30,13 @@ fi
 pre_src() {
 	rm -rf bld_multi; mkdir bld_multi
 	for f in ${SRC[@]}; do
+		wget -q -c ${URL}/$f-${VERSION}.src.tar.xz
 		tar xf $f-${VERSION}.src.tar.xz -C bld_multi
 		ln -srv bld_multi/$f{-$VERSION.src,}
 	done
 
 	cd bld_multi
+	patch -p1 -d libcxx/ <../libcxx-uClibc-no-catopen.patch
 	install -Dm755 /dev/stdin ./${TRIPLE}-gcc <<-"EOF"
 	#!/bin/sh
 		exec gcc -m32 $@

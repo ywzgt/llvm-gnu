@@ -12,7 +12,7 @@
 --- a/utils/ldconfig.c
 +++ b/utils/ldconfig.c
 @@ -951,7 +951,7 @@ int main(int argc, char **argv)
- 
+
  		/* look ma, no defaults */
  		if (!nodefault) {
 -			scan_dir(UCLIBC_RUNTIME_PREFIX "usr/lib");
@@ -32,7 +32,7 @@
 --- a/utils/ldd.c
 +++ b/utils/ldd.c
 @@ -504,7 +504,7 @@ static void locate_library_file(ElfW(Ehdr) *ehdr, ElfW(Dyn) *dynamic,
- 
+
  	/* Lastly, search the standard list of paths for the library.
  	   This list must exactly match the list in uClibc/ldso/ldso/dl-elf.c */
 -	path = UCLIBC_RUNTIME_PREFIX "usr/lib"
