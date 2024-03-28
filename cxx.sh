@@ -92,6 +92,7 @@ stage2() {
 	-DCMAKE_INSTALL_PREFIX=/usr \
 	-DCMAKE_BUILD_TYPE=Release -GNinja \
 	-DLLVM_ENABLE_RUNTIMES="${RUNTIMES}" \
+	-DLIBCXX_ENABLE_WIDE_CHARACTERS=OFF \
 	-DLIBCXX_HAS_ATOMIC_LIB=OFF $*
 	DESTDIR=$PKG ninja install -C build
 	ninja install -C build

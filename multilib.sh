@@ -29,7 +29,7 @@ fi
 pre_src() {
 	rm -rf bld_multi; mkdir bld_multi
 	for f in ${SRC[@]}; do
-		wget -qc ${URL}/$f-${VERSION}.src.tar.xz
+		[[ -f $f-${VERSION}.src.tar.xz ]] || wget -qc ${URL}/$f-${VERSION}.src.tar.xz
 		tar xf $f-${VERSION}.src.tar.xz -C bld_multi
 		ln -srv bld_multi/$f{-$VERSION.src,}
 	done
